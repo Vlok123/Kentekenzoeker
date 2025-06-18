@@ -4,7 +4,7 @@ import { Weight, Search, Car, CheckCircle, Download } from 'lucide-react';
 const features = [
   {
     name: 'Trekgewicht Check',
-    description: 'Controleer snel of uw voertuig een bepaald aanhangergewicht mag trekken',
+    description: 'Controleer snel of uw voertuig een bepaald aanhangergewicht mag trekken met officiële RDW gegevens',
     icon: Weight,
     href: '/trekgewicht',
     color: 'text-blue-600',
@@ -12,7 +12,7 @@ const features = [
   },
   {
     name: 'Kenteken Zoeken',
-    description: 'Zoek voertuigen met wildcards en geavanceerde filters',
+    description: 'Zoek voertuigen met wildcards (bijv. A123**) en geavanceerde filters. Perfect als je niet alle cijfers/letters weet!',
     icon: Search,
     href: '/zoek',
     color: 'text-blue-600',
@@ -40,7 +40,7 @@ export default function HomePage() {
           RDW Voertuig Informatie
         </h1>
         <p className="mt-6 text-base sm:text-lg leading-7 sm:leading-8 text-slate-600 dark:text-slate-300 max-w-2xl mx-auto px-4">
-          Krijg instant toegang tot officiële RDW data. Check trekgewicht, zoek kentekens, 
+          Krijg instant toegang tot officiële RDW data. Check trekgewicht, zoek kentekens met wildcards (zoals A123**), 
           controleer milieuzones en veel meer - allemaal in één moderne, snelle app.
         </p>
         <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 px-4">
@@ -48,13 +48,13 @@ export default function HomePage() {
             to="/trekgewicht"
             className="btn btn-primary px-6 py-3 w-full sm:w-auto text-center"
           >
-            Trekgewicht Checken
+            🏋️ Trekgewicht Checken
           </Link>
           <Link
             to="/zoek"
-            className="btn btn-secondary px-6 py-3 w-full sm:w-auto text-center"
+            className="btn btn-primary px-6 py-3 w-full sm:w-auto text-center"
           >
-            Kenteken Zoeken
+            🔍 Kenteken Zoeken
           </Link>
         </div>
       </div>
@@ -158,20 +158,20 @@ export default function HomePage() {
           Klaar om te beginnen?
         </h2>
         <p className="text-lg sm:text-xl mb-6 sm:mb-8 text-primary-100">
-          Probeer onze tools en ontdek hoe eenvoudig voertuiginformatie kan zijn
+          Check je trekgewicht of zoek kentekens met handige wildcards - kies jouw tool!
         </p>
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
           <Link
             to="/trekgewicht"
             className="bg-white text-primary-600 px-6 sm:px-8 py-3 rounded-md font-semibold hover:bg-slate-50 transition-colors text-center"
           >
-            Start met Trekgewicht Check
+            🏋️ Start met Trekgewicht Check
           </Link>
           <Link
             to="/zoek"
-            className="border-2 border-white text-white px-6 sm:px-8 py-3 rounded-md font-semibold hover:bg-white hover:text-primary-600 transition-colors text-center"
+            className="bg-white text-primary-600 px-6 sm:px-8 py-3 rounded-md font-semibold hover:bg-slate-50 transition-colors text-center"
           >
-            Zoek een Kenteken
+            🔍 Zoek een Kenteken
           </Link>
         </div>
       </div>
