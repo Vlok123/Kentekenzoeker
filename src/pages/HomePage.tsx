@@ -12,7 +12,7 @@ const features = [
   },
   {
     name: 'Kenteken Zoeken',
-    description: 'Zoek voertuigen met wildcards (bijv. A123**) en geavanceerde filters. Perfect als je niet alle cijfers/letters weet!',
+    description: 'Zoek voertuigen met wildcards zoals A123** of **45AB. Geen streepjes nodig! Je kunt meerdere ** gebruiken waar je wilt.',
     icon: Search,
     href: '/zoek',
     color: 'text-blue-600',
@@ -40,7 +40,7 @@ export default function HomePage() {
           RDW Voertuig Informatie
         </h1>
         <p className="mt-6 text-base sm:text-lg leading-7 sm:leading-8 text-slate-600 dark:text-slate-300 max-w-2xl mx-auto px-4">
-          Krijg instant toegang tot officiële RDW data. Check trekgewicht, zoek kentekens met wildcards (zoals A123**), 
+          Krijg instant toegang tot officiële RDW data. Check trekgewicht, zoek kentekens met wildcards (A123**, **45AB, zonder streepjes!), 
           controleer milieuzones en veel meer - allemaal in één moderne, snelle app.
         </p>
         <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 px-4">
@@ -158,7 +158,7 @@ export default function HomePage() {
           Klaar om te beginnen?
         </h2>
         <p className="text-lg sm:text-xl mb-6 sm:mb-8 text-primary-100">
-          Check je trekgewicht of zoek kentekens met handige wildcards - kies jouw tool!
+          Check je trekgewicht of zoek kentekens met flexibele wildcards (geen streepjes nodig) - kies jouw tool!
         </p>
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
           <Link
