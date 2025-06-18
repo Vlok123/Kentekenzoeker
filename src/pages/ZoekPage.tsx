@@ -82,7 +82,7 @@ export default function ZoekPage() {
           Kenteken Zoeken
         </h1>
         <p className="mt-2 text-lg text-slate-600 dark:text-slate-300">
-          Zoek voertuigen met wildcards (*) en geavanceerde filters
+          Zoek voertuigen met wildcards (*) en uitgebreide filters: merk, brandstof, aantal deuren, zitplaatsen en meer
         </p>
       </div>
 
@@ -121,14 +121,14 @@ export default function ZoekPage() {
           {/* Filters */}
           {showFilters && (
             <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                 <div>
                   <Autocomplete
                     label="Merk"
                     value={filters.merk || ''}
                     onChange={(value) => setFilters(prev => ({ ...prev, merk: value || undefined }))}
                     options={brands}
-                    placeholder="Type een merk (bijv. volk voor Volkswagen)"
+                    placeholder="Type een merk"
                   />
                 </div>
 
@@ -147,6 +147,48 @@ export default function ZoekPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Voertuigsoort
+                  </label>
+                  <select
+                    value={filters.voertuigsoort || ''}
+                    onChange={(e) => setFilters(prev => ({ ...prev, voertuigsoort: e.target.value || undefined }))}
+                    className="input"
+                  >
+                    <option value="">Alle types</option>
+                    <option value="Personenauto">Personenauto</option>
+                    <option value="Bedrijfsauto">Bedrijfsauto</option>
+                    <option value="Bus">Bus</option>
+                    <option value="Motorfiets">Motorfiets</option>
+                    <option value="Brom- of snorfiets">Brom- of snorfiets</option>
+                    <option value="Aanhangwagen">Aanhangwagen</option>
+                    <option value="Oplegger">Oplegger</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Brandstof
+                  </label>
+                  <select
+                    value={filters.brandstof || ''}
+                    onChange={(e) => setFilters(prev => ({ ...prev, brandstof: e.target.value || undefined }))}
+                    className="input"
+                  >
+                    <option value="">Alle brandstoffen</option>
+                    <option value="Benzine">Benzine</option>
+                    <option value="Diesel">Diesel</option>
+                    <option value="Elektriciteit">Elektriciteit</option>
+                    <option value="Hybride">Hybride</option>
+                    <option value="LPG">LPG</option>
+                    <option value="CNG">CNG (Aardgas)</option>
+                    <option value="Waterstof">Waterstof</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Kleur
                   </label>
                   <select
@@ -161,6 +203,63 @@ export default function ZoekPage() {
                   </select>
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Aantal deuren
+                  </label>
+                  <select
+                    value={filters.aantalDeuren || ''}
+                    onChange={(e) => setFilters(prev => ({ ...prev, aantalDeuren: parseInt(e.target.value) || undefined }))}
+                    className="input"
+                  >
+                    <option value="">Alle aantallen</option>
+                    <option value="2">2 deuren</option>
+                    <option value="3">3 deuren</option>
+                    <option value="4">4 deuren</option>
+                    <option value="5">5 deuren</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Aantal zitplaatsen
+                  </label>
+                  <select
+                    value={filters.aantalZitplaatsen || ''}
+                    onChange={(e) => setFilters(prev => ({ ...prev, aantalZitplaatsen: parseInt(e.target.value) || undefined }))}
+                    className="input"
+                  >
+                    <option value="">Alle aantallen</option>
+                    <option value="2">2 personen</option>
+                    <option value="4">4 personen</option>
+                    <option value="5">5 personen</option>
+                    <option value="7">7 personen</option>
+                    <option value="8">8 personen</option>
+                    <option value="9">9+ personen</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Euro klasse
+                  </label>
+                  <select
+                    value={filters.euroKlasse || ''}
+                    onChange={(e) => setFilters(prev => ({ ...prev, euroKlasse: e.target.value || undefined }))}
+                    className="input"
+                  >
+                    <option value="">Alle klassen</option>
+                    <option value="EURO 6">Euro 6</option>
+                    <option value="EURO 5">Euro 5</option>
+                    <option value="EURO 4">Euro 4</option>
+                    <option value="EURO 3">Euro 3</option>
+                    <option value="EURO 2">Euro 2</option>
+                    <option value="EURO 1">Euro 1</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Bouwjaar van
@@ -190,15 +289,85 @@ export default function ZoekPage() {
                     className="input"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Cilinderinhoud van (cc)
+                  </label>
+                  <input
+                    type="number"
+                    value={filters.cilinderinhoudVan || ''}
+                    onChange={(e) => setFilters(prev => ({ ...prev, cilinderinhoudVan: parseInt(e.target.value) || undefined }))}
+                    placeholder="1000"
+                    min="0"
+                    max="10000"
+                    className="input"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Cilinderinhoud tot (cc)
+                  </label>
+                  <input
+                    type="number"
+                    value={filters.cilinderinhoudTot || ''}
+                    onChange={(e) => setFilters(prev => ({ ...prev, cilinderinhoudTot: parseInt(e.target.value) || undefined }))}
+                    placeholder="2000"
+                    min="0"
+                    max="10000"
+                    className="input"
+                  />
+                </div>
               </div>
 
-              <div className="flex justify-end mt-4">
-                <button
-                  onClick={handleClearFilters}
-                  className="btn btn-secondary"
-                >
-                  Filters Wissen
-                </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Zuinigheidslabel
+                  </label>
+                  <select
+                    value={filters.zuinigheidslabel || ''}
+                    onChange={(e) => setFilters(prev => ({ ...prev, zuinigheidslabel: e.target.value || undefined }))}
+                    className="input"
+                  >
+                    <option value="">Alle labels</option>
+                    <option value="A">A (Zeer zuinig)</option>
+                    <option value="B">B (Zuinig)</option>
+                    <option value="C">C (Gemiddeld)</option>
+                    <option value="D">D (Matig)</option>
+                    <option value="E">E (Onzuinig)</option>
+                    <option value="F">F (Zeer onzuinig)</option>
+                    <option value="G">G (Uiterst onzuinig)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Roetfilter
+                  </label>
+                  <select
+                    value={filters.roetfilter === undefined ? '' : filters.roetfilter ? 'true' : 'false'}
+                    onChange={(e) => setFilters(prev => ({ 
+                      ...prev, 
+                      roetfilter: e.target.value === '' ? undefined : e.target.value === 'true' 
+                    }))}
+                    className="input"
+                  >
+                    <option value="">Beide</option>
+                    <option value="true">Met roetfilter</option>
+                    <option value="false">Zonder roetfilter</option>
+                  </select>
+                </div>
+
+                <div className="flex items-end">
+                  <button
+                    onClick={handleClearFilters}
+                    className="btn btn-secondary w-full"
+                  >
+                    Alle Filters Wissen
+                  </button>
+                </div>
               </div>
             </div>
           )}

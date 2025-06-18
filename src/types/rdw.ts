@@ -137,6 +137,15 @@ export interface SearchFilters {
   bouwjaarVan?: number;
   bouwjaarTot?: number;
   brandstof?: string;
+  voertuigsoort?: string;
+  aantalDeuren?: number;
+  aantalZitplaatsen?: number;
+  aantalCilinders?: number;
+  cilinderinhoudVan?: number;
+  cilinderinhoudTot?: number;
+  euroKlasse?: string;
+  roetfilter?: boolean;
+  zuinigheidslabel?: string;
 }
 
 export interface SearchResult {

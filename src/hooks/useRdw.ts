@@ -138,15 +138,60 @@ export function useVehicleSearch(query: string, filters: SearchFilters, enabled 
       if (filters.brandstof) {
         params.brandstof_hoofdsoort = filters.brandstof.toUpperCase();
       }
+      if (filters.voertuigsoort) {
+        params.voertuigsoort = filters.voertuigsoort;
+      }
+      if (filters.aantalDeuren) {
+        params.aantal_deuren = filters.aantalDeuren;
+      }
+      if (filters.aantalZitplaatsen) {
+        params.aantal_zitplaatsen = filters.aantalZitplaatsen;
+      }
+      if (filters.aantalCilinders) {
+        params.aantal_cilinders = filters.aantalCilinders;
+      }
+      if (filters.euroKlasse) {
+        params.emissiecode_omschrijving = filters.euroKlasse;
+      }
+      if (filters.zuinigheidslabel) {
+        params.zuinigheidslabel = filters.zuinigheidslabel;
+      }
+      if (filters.roetfilter !== undefined) {
+        params.roetfilter = filters.roetfilter ? 'J' : 'N';
+      }
+      
+      // Handle date range filters
+      let whereClause = '';
+      
       if (filters.bouwjaarVan || filters.bouwjaarTot) {
         if (filters.bouwjaarVan && filters.bouwjaarTot) {
-          // Range filter - gebruik where clause
-          params.$where = `datum_eerste_toelating between '${filters.bouwjaarVan}0101' and '${filters.bouwjaarTot}1231'`;
+          whereClause = `datum_eerste_toelating between '${filters.bouwjaarVan}0101' and '${filters.bouwjaarTot}1231'`;
         } else if (filters.bouwjaarVan) {
-          params.$where = `datum_eerste_toelating >= '${filters.bouwjaarVan}0101'`;
+          whereClause = `datum_eerste_toelating >= '${filters.bouwjaarVan}0101'`;
         } else if (filters.bouwjaarTot) {
-          params.$where = `datum_eerste_toelating <= '${filters.bouwjaarTot}1231'`;
+          whereClause = `datum_eerste_toelating <= '${filters.bouwjaarTot}1231'`;
         }
+      }
+      
+      // Handle cylinder capacity range filters
+      if (filters.cilinderinhoudVan || filters.cilinderinhoudTot) {
+        const cylinderClause = [];
+        if (filters.cilinderinhoudVan) {
+          cylinderClause.push(`cilinderinhoud >= ${filters.cilinderinhoudVan}`);
+        }
+        if (filters.cilinderinhoudTot) {
+          cylinderClause.push(`cilinderinhoud <= ${filters.cilinderinhoudTot}`);
+        }
+        
+        if (whereClause) {
+          whereClause += ' AND ' + cylinderClause.join(' AND ');
+        } else {
+          whereClause = cylinderClause.join(' AND ');
+        }
+      }
+      
+      if (whereClause) {
+        params.$where = whereClause;
       }
 
       console.log('Search params:', params);
