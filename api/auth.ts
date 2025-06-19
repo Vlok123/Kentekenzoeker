@@ -263,7 +263,7 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
         SELECT id, email, name, role, created_at 
         FROM users 
         ORDER BY created_at DESC 
-        LIMIT 10
+        LIMIT 50
       `);
       const recentUsers = recentUsersResult.rows;
 
