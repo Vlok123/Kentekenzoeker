@@ -2,7 +2,7 @@ User-agent: *
 Allow: /
 
 # Sitemap
-Sitemap: https://rdw-intelligence.vercel.app/sitemap.xml
+Sitemap: https://mijnkentekencheck.nl/sitemap.xml
 
 # Crawl-delay for respectful crawling
 Crawl-delay: 1

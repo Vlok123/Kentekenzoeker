@@ -38,10 +38,10 @@ export default function HomePage() {
   return (
     <>
       <SEOHead 
-        title="RDW Intelligence - Nederlandse Voertuig Informatie | Kenteken Opzoeken & Trekgewicht Check"
+        title="Mijn Kenteken Check - Nederlandse Kentekens Zoeken | Kenteken Opzoeken & Trekgewicht Check"
         description="Zoek alle Nederlandse voertuigen op kenteken, controleer trekgewicht en bekijk complete RDW data. 15+ miljoen voertuigen, 100% officiële RDW informatie, gratis en actueel."
-        keywords="RDW, kenteken opzoeken, voertuig informatie, trekgewicht check, APK, Nederlandse voertuigen, auto gegevens, kenteken check, voertuig historie, RDW data"
-        canonicalUrl="https://rdw-intelligence.vercel.app/"
+        keywords="kenteken check, kenteken opzoeken, voertuig informatie, trekgewicht check, APK, Nederlandse voertuigen, auto gegevens, kenteken zoeken, voertuig historie, RDW data"
+        canonicalUrl="https://mijnkentekencheck.nl/"
       />
       
       <div className="min-h-screen gradient-bg relative overflow-hidden">
@@ -56,8 +56,8 @@ export default function HomePage() {
           <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23000000%22%20fill-opacity%3D%220.03%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%221%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] dark:bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.05%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%221%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] animate-pulse" />
         </div>
 
-        {/* Hero Section with proper spacing */}
-        <div ref={heroRef} className="relative min-h-screen flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 z-10 pb-24">
+        {/* Hero Section with proper spacing to avoid header overlap */}
+        <div ref={heroRef} className="relative min-h-screen flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 z-10 pt-24 pb-24">
           <div 
             className="text-center max-w-6xl mx-auto"
             style={{
@@ -66,16 +66,12 @@ export default function HomePage() {
           >
             {/* Main Title */}
             <div className="mb-8 sm:mb-12">
-              <h1 className="text-6xl sm:text-8xl lg:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-800 via-blue-600 to-blue-800 dark:from-white dark:via-blue-200 dark:to-purple-200 leading-none tracking-tighter mb-4">
-                RDW
+              <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-800 via-blue-600 to-blue-800 dark:from-white dark:via-blue-200 dark:to-purple-200 leading-none tracking-tighter mb-6">
+                Nederlandse kentekens zoeken
               </h1>
-              <h2 className="text-2xl sm:text-4xl lg:text-5xl font-bold text-slate-700 dark:text-white/90 leading-tight">
-                Nederlandse Voertuig
-                <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-purple-400">
-                  Intelligence
-                </span>
-              </h2>
+              <div className="text-lg sm:text-xl font-medium text-slate-600 dark:text-slate-300 mb-4">
+                <span className="text-blue-600 dark:text-blue-400 font-bold">mijnkentekencheck.nl</span>
+              </div>
             </div>
 
             {/* Subtitle */}
@@ -97,7 +93,7 @@ export default function HomePage() {
             {/* How it Works Section */}
             <div className="mb-16 max-w-4xl mx-auto">
               <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-8 text-center">
-                Hoe werkt RDW Intelligence?
+                Hoe werkt Mijn Kenteken Check?
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

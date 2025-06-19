@@ -72,8 +72,8 @@ export default function Layout({ children }: LayoutProps) {
                 <Car className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
               </div>
               <div className="hidden sm:block">
-                <span className="text-xl font-bold text-slate-900 dark:text-white">RDW</span>
-                <span className="text-sm text-slate-600 dark:text-slate-300 block leading-none">Intelligence</span>
+                <span className="text-xl font-bold text-slate-900 dark:text-white">Mijn Kenteken</span>
+                <span className="text-sm text-slate-600 dark:text-slate-300 block leading-none">Check</span>
               </div>
             </Link>
 
