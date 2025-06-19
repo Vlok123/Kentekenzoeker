@@ -7,6 +7,8 @@ import VoertuigDetailPage from '@/pages/VoertuigDetailPage';
 import ZoekPage from '@/pages/ZoekPage';
 import LoginPage from '@/pages/LoginPage';
 import AdminPage from '@/pages/AdminPage';
+import MijnOpgeslagenPage from '@/pages/MijnOpgeslagenPage';
+import DashboardPage from '@/pages/DashboardPage';
 import { useAppStore } from '@/store/useAppStore';
 import { MockAuthService as AuthService } from '@/lib/auth-mock';
 
@@ -82,17 +84,18 @@ function App() {
               
               {/* Protected user routes */}
               <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <DashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/mijn-opgeslagen"
                 element={
                   <ProtectedRoute>
-                    <div className="max-w-4xl mx-auto text-center py-12">
-                      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-                        Mijn opgeslagen items
-                      </h1>
-                      <p className="text-slate-600 dark:text-slate-300">
-                        Deze pagina is nog in ontwikkeling.
-                      </p>
-                    </div>
+                    <MijnOpgeslagenPage />
                   </ProtectedRoute>
                 }
               />

@@ -1,21 +1,58 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
+import { differenceInDays } from 'date-fns';
 import { processVehicleData } from '@/utils/dataProcessing';
 import { normalizeLicensePlate, matchesWildcard } from '@/utils/licensePlate';
 import { useAppStore } from '@/store/useAppStore';
 import type { 
   RdwVehicle, 
   RdwRecall, 
+  RdwApkData,
+  RdwBrandstofData,
+  RdwCarrosserieData,
+  RdwEmissieData,
+  RdwWegenbelastingData,
+  RdwAssenData,
   ProcessedVehicle, 
   SearchFilters, 
   TrekgewichtCheck,
-  TrekgewichtResult 
+  TrekgewichtResult,
+  ApkHistorieItem,
+  AsInfo,
+  // Additional API types
+  RdwCarrosserieSpecificData,
+  RdwVoertuigklasseData,
+  // New API types
+  RdwApkExpiryData,
+  RdwApkHistoryData,
+  RdwEnvironmentData,
+  RdwTechnicalData,
+  RdwFuelData,
+  RdwRoadTaxData
 } from '@/types/rdw';
 
 // RDW API Base URLs - direct access (RDW supports CORS)
 const RDW_BASE_URL = 'https://opendata.rdw.nl/resource';
-const VEHICLES_ENDPOINT = `${RDW_BASE_URL}/m9d7-ebf2.json`;
-const RECALLS_ENDPOINT = `${RDW_BASE_URL}/t3ee-brg3.json`;
+
+// Main vehicle data endpoints
+const VEHICLES_ENDPOINT = `${RDW_BASE_URL}/m9d7-ebf2.json`; // Main vehicle data
+const CARROSSERIE_ENDPOINT = `${RDW_BASE_URL}/vezc-m2t6.json`; // Body type basic
+const CARROSSERIE_SPECIFIC_ENDPOINT = `${RDW_BASE_URL}/jhie-znh9.json`; // Body type specific
+const VOERTUIGKLASSE_ENDPOINT = `${RDW_BASE_URL}/kmfi-hrps.json`; // Vehicle class
+const ASSEN_ENDPOINT = `${RDW_BASE_URL}/3huj-srit.json`; // Axles data
+const BRANDSTOF_ENDPOINT = `${RDW_BASE_URL}/8ys7-d773.json`; // Fuel/emissions data
+
+// APK/Inspection endpoints
+const APK_ENDPOINT = `${RDW_BASE_URL}/kh7p-v4pf.json`; // APK history
+const APK_EXPIRY_ENDPOINT = `${RDW_BASE_URL}/vezc-m2t6.json`; // APK expiry (same as carrosserie)
+const APK_HISTORY_ENDPOINT = `${RDW_BASE_URL}/kdsi-8uzc.json`; // APK history detailed
+
+// Additional data endpoints
+const EMISSIONS_ENDPOINT = `${RDW_BASE_URL}/8ys7-d773.json`; // Same as brandstof
+const TECHNICAL_ENDPOINT = `${RDW_BASE_URL}/78bh-yfrx.json`; // Technical data
+const FUEL_ENDPOINT = `${RDW_BASE_URL}/8dk6-zvkw.json`; // Fuel info
+const ROAD_TAX_ENDPOINT = `${RDW_BASE_URL}/gm6w-96i9.json`; // Road tax
+const RECALLS_ENDPOINT = `${RDW_BASE_URL}/t3ee-brg3.json`; // Recalls
 
 // Create axios instance with default config
 const rdwApi = axios.create({
@@ -24,6 +61,182 @@ const rdwApi = axios.create({
     'Accept': 'application/json',
   },
 });
+
+// Helper function to make RDW API calls with graceful 404 handling
+async function safeRdwApiCall<T>(endpoint: string, params: any): Promise<T[]> {
+  try {
+    const response = await rdwApi.get<T[]>(endpoint, { params });
+    return response.data || [];
+  } catch (error: any) {
+    // Silently handle 404 errors - data not available for this vehicle
+    if (error.response?.status === 404 || error.code === 'ERR_BAD_REQUEST') {
+      return [];
+    }
+    throw error;
+  }
+}
+
+/**
+ * Hook voor het ophalen van APK historie van een voertuig
+ */
+export function useVehicleApkHistory(kenteken: string, enabled = true) {
+  return useQuery({
+    queryKey: ['apkHistory', kenteken],
+    queryFn: async (): Promise<ApkHistorieItem[]> => {
+      if (!kenteken) {
+        return [];
+      }
+
+      const normalizedKenteken = normalizeLicensePlate(kenteken);
+      
+      const data = await safeRdwApiCall<RdwApkData>(APK_ENDPOINT, {
+        kenteken: normalizedKenteken,
+        $limit: 50,
+        $order: 'datum_afgifte_apk DESC',
+      });
+
+      return data.map(item => ({
+        datum: new Date(item.datum_afgifte_apk),
+        uitslag: item.apk_uitslag as 'Goedgekeurd' | 'Afgekeurd' | 'Niet verschenen',
+        gebrekLicht: parseInt(item.aantal_gebrek_licht) || 0,
+        gebrekZwaar: parseInt(item.aantal_gebrek_zwaar) || 0,
+        gebrekKritiek: parseInt(item.aantal_gebrek_kritiek) || 0,
+        keuringsinstantie: item.keuringsinstantie_naam || 'Onbekend',
+        plaats: item.keuringsinstantie_plaats || 'Onbekend',
+      }));
+    },
+    enabled: enabled && !!kenteken,
+    staleTime: 1000 * 60 * 30, // 30 minutes
+    cacheTime: 1000 * 60 * 60, // 1 hour
+  });
+}
+
+/**
+ * Hook voor het ophalen van brandstof gegevens
+ */
+export function useVehicleFuelData(kenteken: string, enabled = true) {
+  return useQuery({
+    queryKey: ['fuelData', kenteken],
+    queryFn: async (): Promise<RdwBrandstofData[]> => {
+      if (!kenteken) {
+        return [];
+      }
+
+      const normalizedKenteken = normalizeLicensePlate(kenteken);
+      
+      return await safeRdwApiCall<RdwBrandstofData>(BRANDSTOF_ENDPOINT, {
+        kenteken: normalizedKenteken,
+        $limit: 10,
+      });
+    },
+    enabled: enabled && !!kenteken,
+    staleTime: 1000 * 60 * 30,
+    cacheTime: 1000 * 60 * 60,
+  });
+}
+
+/**
+ * Hook voor het ophalen van carrosserie gegevens
+ */
+export function useVehicleBodyData(kenteken: string, enabled = true) {
+  return useQuery({
+    queryKey: ['bodyData', kenteken],
+    queryFn: async (): Promise<RdwCarrosserieData[]> => {
+      if (!kenteken) {
+        return [];
+      }
+
+      const normalizedKenteken = normalizeLicensePlate(kenteken);
+      
+      return await safeRdwApiCall<RdwCarrosserieData>(CARROSSERIE_ENDPOINT, {
+        kenteken: normalizedKenteken,
+        $limit: 10,
+      });
+    },
+    enabled: enabled && !!kenteken,
+    staleTime: 1000 * 60 * 30,
+    cacheTime: 1000 * 60 * 60,
+  });
+}
+
+/**
+ * Hook voor het ophalen van assen gegevens
+ */
+export function useVehicleAxlesData(kenteken: string, enabled = true) {
+  return useQuery({
+    queryKey: ['axlesData', kenteken],
+    queryFn: async (): Promise<AsInfo[]> => {
+      if (!kenteken) {
+        return [];
+      }
+
+      const normalizedKenteken = normalizeLicensePlate(kenteken);
+      
+      const data = await safeRdwApiCall<RdwAssenData>(ASSEN_ENDPOINT, {
+        kenteken: normalizedKenteken,
+        $limit: 10,
+      });
+
+      return data.map(item => ({
+        nummer: parseInt(item.as_nummer) || 0,
+        maximumAslast: parseInt(item.technisch_toegestane_maximum_aslast) || 0,
+        bandenAantal: parseInt(item.banden_aantal) || 0,
+        bandenType: item.banden_type || 'Onbekend',
+        bandenAfmeting: item.banden_afmeting || 'Onbekend',
+      }));
+    },
+    enabled: enabled && !!kenteken,
+    staleTime: 1000 * 60 * 30,
+    cacheTime: 1000 * 60 * 60,
+  });
+}
+
+/**
+ * Hook voor complete voertuiggegevens inclusief alle datasets
+ */
+export function useCompleteVehicleData(kenteken: string, enabled = true) {
+  const vehicleQuery = useVehicleByLicensePlate(kenteken, enabled);
+  const apkHistoryQuery = useVehicleApkHistory(kenteken, enabled && !!kenteken);
+  const fuelDataQuery = useVehicleFuelData(kenteken, enabled && !!kenteken);
+  const bodyDataQuery = useVehicleBodyData(kenteken, enabled && !!kenteken);
+  const axlesDataQuery = useVehicleAxlesData(kenteken, enabled && !!kenteken);
+  const recallsQuery = useVehicleRecalls(kenteken, enabled && !!kenteken);
+
+  return useQuery({
+    queryKey: ['completeVehicleData', kenteken],
+    queryFn: async (): Promise<ProcessedVehicle> => {
+      // Wait for all queries to complete
+      const [vehicle] = await Promise.all([
+        vehicleQuery.refetch().then(r => r.data),
+        apkHistoryQuery.refetch().then(r => r.data),
+        fuelDataQuery.refetch().then(r => r.data),
+        bodyDataQuery.refetch().then(r => r.data),
+        axlesDataQuery.refetch().then(r => r.data),
+        recallsQuery.refetch().then(r => r.data),
+      ]);
+
+      if (!vehicle) {
+        throw new Error('Voertuiggegevens niet gevonden');
+      }
+
+      // Enrich vehicle data with additional information
+      const enrichedVehicle: ProcessedVehicle = {
+        ...vehicle,
+        apkHistorie: apkHistoryQuery.data || [],
+        carrosserie: bodyDataQuery.data?.[0] ? {
+          type: bodyDataQuery.data[0].type_carrosserie_code,
+          omschrijving: bodyDataQuery.data[0].type_carrosserie_nederlands || bodyDataQuery.data[0].type_carrosserie_europese_omschrijving,
+        } : undefined,
+        assen: axlesDataQuery.data || [],
+      };
+
+      return enrichedVehicle;
+    },
+    enabled: enabled && !!kenteken && vehicleQuery.isSuccess,
+    staleTime: 1000 * 60 * 15,
+    cacheTime: 1000 * 60 * 60,
+  });
+}
 
 /**
  * Hook voor het ophalen van voertuiggegevens op basis van kenteken
@@ -250,8 +463,6 @@ export function useVehicleSearch(query: string, filters: SearchFilters, enabled 
  * Hook voor het ophalen van recall informatie
  */
 export function useVehicleRecalls(kenteken: string, enabled = true) {
-  const { addNotification } = useAppStore();
-
   return useQuery({
     queryKey: ['recalls', kenteken],
     queryFn: async (): Promise<RdwRecall[]> => {
@@ -261,25 +472,14 @@ export function useVehicleRecalls(kenteken: string, enabled = true) {
 
       const normalizedKenteken = normalizeLicensePlate(kenteken);
       
-      const response = await rdwApi.get<RdwRecall[]>(RECALLS_ENDPOINT, {
-        params: {
-          kenteken: normalizedKenteken,
-          $limit: 50,
-        },
+      return await safeRdwApiCall<RdwRecall>(RECALLS_ENDPOINT, {
+        kenteken: normalizedKenteken,
+        $limit: 50,
       });
-
-      return response.data || [];
     },
     enabled: enabled && !!kenteken,
     staleTime: 1000 * 60 * 30, // 30 minutes
     cacheTime: 1000 * 60 * 60 * 2, // 2 hours
-    onError: (error: Error) => {
-      addNotification({
-        type: 'error',
-        title: 'Fout bij ophalen recall informatie',
-        message: error.message,
-      });
-    },
   });
 }
 
@@ -498,4 +698,350 @@ export function useBatchVehicleLookup() {
       });
     },
   });
-} 
+}
+
+// NEW 2025 API HOOKS
+
+/**
+ * Hook voor APK vervaldatum (nieuwe endpoint)
+ */
+export function useVehicleApkExpiry(kenteken: string, enabled = true) {
+  return useQuery({
+    queryKey: ['apkExpiry', kenteken],
+    queryFn: async (): Promise<RdwApkExpiryData[]> => {
+      if (!kenteken) {
+        return [];
+      }
+
+      const normalizedKenteken = normalizeLicensePlate(kenteken);
+      
+      return await safeRdwApiCall<RdwApkExpiryData>(APK_EXPIRY_ENDPOINT, {
+        kenteken: normalizedKenteken,
+        $limit: 10,
+      });
+    },
+    enabled: enabled && !!kenteken,
+    staleTime: 1000 * 60 * 30,
+    cacheTime: 1000 * 60 * 60,
+  });
+}
+
+/**
+ * Hook voor APK keuringshistorie (nieuwe endpoint)
+ */
+export function useVehicleApkHistoryNew(kenteken: string, enabled = true) {
+  return useQuery({
+    queryKey: ['apkHistoryNew', kenteken],
+    queryFn: async (): Promise<RdwApkHistoryData[]> => {
+      if (!kenteken) {
+        return [];
+      }
+
+      const normalizedKenteken = normalizeLicensePlate(kenteken);
+      
+      return await safeRdwApiCall<RdwApkHistoryData>(APK_HISTORY_ENDPOINT, {
+        kenteken: normalizedKenteken,
+        $limit: 50,
+        $order: 'datum_afgifte_apk DESC',
+      });
+    },
+    enabled: enabled && !!kenteken,
+    staleTime: 1000 * 60 * 30,
+    cacheTime: 1000 * 60 * 60,
+  });
+}
+
+/**
+ * Hook voor milieu/emissie/verbruik gegevens (nieuwe endpoint)
+ */
+export function useVehicleEnvironmentData(kenteken: string, enabled = true) {
+  return useQuery({
+    queryKey: ['environmentData', kenteken],
+    queryFn: async (): Promise<RdwEnvironmentData[]> => {
+      if (!kenteken) {
+        return [];
+      }
+
+      const normalizedKenteken = normalizeLicensePlate(kenteken);
+      
+      return await safeRdwApiCall<RdwEnvironmentData>(EMISSIONS_ENDPOINT, {
+        kenteken: normalizedKenteken,
+        $limit: 10,
+      });
+    },
+    enabled: enabled && !!kenteken,
+    staleTime: 1000 * 60 * 30,
+    cacheTime: 1000 * 60 * 60,
+  });
+}
+
+/**
+ * Hook voor technische gegevens (nieuwe endpoint)
+ */
+export function useVehicleTechnicalData(kenteken: string, enabled = true) {
+  return useQuery({
+    queryKey: ['technicalData', kenteken],
+    queryFn: async (): Promise<RdwTechnicalData[]> => {
+      if (!kenteken) {
+        return [];
+      }
+
+      const normalizedKenteken = normalizeLicensePlate(kenteken);
+      
+      return await safeRdwApiCall<RdwTechnicalData>(TECHNICAL_ENDPOINT, {
+        kenteken: normalizedKenteken,
+        $limit: 10,
+      });
+    },
+    enabled: enabled && !!kenteken,
+    staleTime: 1000 * 60 * 30,
+    cacheTime: 1000 * 60 * 60,
+  });
+}
+
+/**
+ * Hook voor brandstofinfo (nieuwe endpoint)
+ */
+export function useVehicleFuelDataNew(kenteken: string, enabled = true) {
+  return useQuery({
+    queryKey: ['fuelDataNew', kenteken],
+    queryFn: async (): Promise<RdwFuelData[]> => {
+      if (!kenteken) {
+        return [];
+      }
+
+      const normalizedKenteken = normalizeLicensePlate(kenteken);
+      
+      return await safeRdwApiCall<RdwFuelData>(FUEL_ENDPOINT, {
+        kenteken: normalizedKenteken,
+        $limit: 10,
+      });
+    },
+    enabled: enabled && !!kenteken,
+    staleTime: 1000 * 60 * 30,
+    cacheTime: 1000 * 60 * 60,
+  });
+}
+
+/**
+ * Hook voor motorrijtuigenbelasting (algemeen, niet kentekengebonden)
+ */
+export function useRoadTaxData(enabled = true) {
+  return useQuery({
+    queryKey: ['roadTaxData'],
+    queryFn: async (): Promise<RdwRoadTaxData[]> => {
+      return await safeRdwApiCall<RdwRoadTaxData>(ROAD_TAX_ENDPOINT, {
+        $limit: 1000,
+        $order: 'wegenbelasting_jaar DESC',
+      });
+    },
+    enabled,
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours
+    cacheTime: 1000 * 60 * 60 * 24, // 24 hours
+  });
+}
+
+/**
+ * Hook voor specifieke carrosserie gegevens (jhie-znh9.json)
+ */
+export function useVehicleCarrosserieSpecific(kenteken: string, enabled = true) {
+  return useQuery({
+    queryKey: ['carrosserieSpecific', kenteken],
+    queryFn: async (): Promise<RdwCarrosserieSpecificData[]> => {
+      if (!kenteken) {
+        return [];
+      }
+
+      const normalizedKenteken = normalizeLicensePlate(kenteken);
+      
+      return await safeRdwApiCall<RdwCarrosserieSpecificData>(CARROSSERIE_SPECIFIC_ENDPOINT, {
+        kenteken: normalizedKenteken,
+        $limit: 10,
+      });
+    },
+    enabled: enabled && !!kenteken,
+    staleTime: 1000 * 60 * 30,
+    cacheTime: 1000 * 60 * 60,
+  });
+}
+
+/**
+ * Hook voor voertuigklasse gegevens (kmfi-hrps.json)
+ */
+export function useVehicleClass(kenteken: string, enabled = true) {
+  return useQuery({
+    queryKey: ['vehicleClass', kenteken],
+    queryFn: async (): Promise<RdwVoertuigklasseData[]> => {
+      if (!kenteken) {
+        return [];
+      }
+
+      const normalizedKenteken = normalizeLicensePlate(kenteken);
+      
+      return await safeRdwApiCall<RdwVoertuigklasseData>(VOERTUIGKLASSE_ENDPOINT, {
+        kenteken: normalizedKenteken,
+        $limit: 10,
+      });
+    },
+    enabled: enabled && !!kenteken,
+    staleTime: 1000 * 60 * 30,
+    cacheTime: 1000 * 60 * 60,
+  });
+}
+
+/**
+ * 🎯 COMPLETE RDW DATA COMBINER
+ * Combineert alle beschikbare RDW API endpoints tot één overzichtelijk resultaat
+ * Gebruikt bestaande, geteste hooks voor betrouwbaarheid
+ */
+export function useCompleteRdwData(kenteken: string, enabled = true) {
+  // Gebruik bestaande hooks
+  const vehicleQuery = useVehicleByLicensePlate(kenteken, enabled);
+  const apkHistoryQuery = useVehicleApkHistory(kenteken, enabled && !!kenteken);
+  const fuelDataQuery = useVehicleFuelData(kenteken, enabled && !!kenteken);
+  const bodyDataQuery = useVehicleBodyData(kenteken, enabled && !!kenteken);
+  const axlesDataQuery = useVehicleAxlesData(kenteken, enabled && !!kenteken);
+  const recallsQuery = useVehicleRecalls(kenteken, enabled && !!kenteken);
+  const carrosserieSpecificQuery = useVehicleCarrosserieSpecific(kenteken, enabled && !!kenteken);
+
+  return useQuery({
+    queryKey: ['completeRdwData', kenteken],
+    queryFn: async () => {
+      if (!kenteken) {
+        throw new Error('Kenteken is verplicht');
+      }
+
+      // Wacht tot alle queries klaar zijn
+      const vehicle = vehicleQuery.data;
+      const apkHistorie = apkHistoryQuery.data || [];
+      const fuelData = fuelDataQuery.data || [];
+      const bodyData = bodyDataQuery.data || [];
+      const axlesData = axlesDataQuery.data || [];
+      const recalls = recallsQuery.data || [];
+      const carrosserieSpecific = carrosserieSpecificQuery.data || [];
+
+      if (!vehicle) {
+        throw new Error(`Geen voertuig gevonden met kenteken ${kenteken}`);
+      }
+
+      // Combineer alle data tot één overzichtelijk object (zoals jouw voorbeeld)
+      const completeVehicleInfo = {
+        // 📋 BASIS INFORMATIE
+        kenteken: vehicle.kenteken,
+        merk: vehicle.merk,
+        model: vehicle.model,
+        uitvoering: bodyData[0]?.type_carrosserie_nederlands || '',
+        bouwjaar: vehicle.bouwjaar,
+        datumEersteToelating: vehicle.datumEersteToelating,
+        
+        // 🔋 BRANDSTOF & AANDRIJVING
+        brandstof: vehicle.brandstof,
+        brandstofDetails: fuelData.map(f => f.brandstof_omschrijving).join(', '),
+        
+        // 🛡️ APK INFORMATIE
+        apkVervaldatum: vehicle.apkGeldigTot ? vehicle.apkGeldigTot.toISOString().split('T')[0] : null,
+        apkVerlooptBinnenkort: vehicle.apkVerlooptBinnenkort,
+        apkHistorie: apkHistorie.slice(0, 10),
+        
+        // 🌍 MILIEU & EMISSIES
+        co2Uitstoot: vehicle.milieu.co2Uitstoot,
+        euroNorm: vehicle.milieu.euroKlasse,
+        zuinigheidslabel: vehicle.milieu.zuinigheidslabel,
+        roetfilter: vehicle.milieu.roetfilter,
+        
+        // ⛽ VERBRUIK (uit milieu data indien beschikbaar)
+        verbruikGecombineerd: vehicle.milieu.verbruikGecombineerd ? `${vehicle.milieu.verbruikGecombineerd} l/100km` : '',
+        verbruikStad: vehicle.milieu.verbruikStad ? `${vehicle.milieu.verbruikStad} l/100km` : '',
+        verbruikBuiten: vehicle.milieu.verbruikBuiten ? `${vehicle.milieu.verbruikBuiten} l/100km` : '',
+        
+        // ⚖️ MASSA & GEWICHTEN
+        massaLedig: vehicle.massa.ledig,
+        massaRijklaar: vehicle.massa.rijklaar,
+        massaMaximum: vehicle.massa.technischMaximum,
+        
+        // 🚛 TREKGEWICHT
+        trekgewichtOngeremd: vehicle.trekgewicht.ongeremd,
+        trekgewichtGeremd: vehicle.trekgewicht.geremd,
+        
+        // 📐 AFMETINGEN
+        lengte: vehicle.afmetingen.lengte,
+        breedte: vehicle.afmetingen.breedte,
+        hoogte: vehicle.afmetingen.hoogte,
+        
+        // 🔧 MOTOR & TECHNIEK
+        cilinderinhoud: vehicle.motor.cilinderinhoud,
+        vermogen: vehicle.motor.vermogen,
+        aantalCilinders: vehicle.motor.cilinders,
+        
+        // 🎨 UITERLIJK
+        kleur: vehicle.kleur,
+        
+        // 🏗️ CARROSSERIE
+        voertuigsoort: vehicle.voertuigsoort,
+        carrosserieOmschrijving: bodyData[0]?.type_carrosserie_europese_omschrijving || 
+                                 carrosserieSpecific[0]?.carrosserie_voertuig_nummer_europese_omschrijving || '',
+        
+        // ⚠️ WAARSCHUWINGEN
+        openstaandeTerugroepactie: vehicle.hasRecall,
+        recalls: recalls,
+        
+        // 🛞 ASSEN & BANDEN
+        assen: axlesData,
+        
+        // 📊 METADATA
+        laatsteUpdate: new Date().toISOString(),
+        source: {
+          voertuiggegevens: `${VEHICLES_ENDPOINT}?kenteken=${kenteken}`,
+          apkHistorie: `${APK_ENDPOINT}?kenteken=${kenteken}`,
+          carrosserie: `${CARROSSERIE_ENDPOINT}?kenteken=${kenteken}`,
+          brandstofData: `${BRANDSTOF_ENDPOINT}?kenteken=${kenteken}`,
+          assenData: `${ASSEN_ENDPOINT}?kenteken=${kenteken}`,
+          recalls: `${RECALLS_ENDPOINT}?kenteken=${kenteken}`,
+        }
+      };
+
+      console.log('✅ Complete RDW data combined:', completeVehicleInfo);
+      return completeVehicleInfo;
+    },
+    enabled: enabled && !!kenteken && vehicleQuery.isSuccess,
+    staleTime: 1000 * 60 * 15, // 15 minutes
+    cacheTime: 1000 * 60 * 60, // 1 hour
+  });
+}
+
+// Helper functions voor de complete data hook
+function parseRdwDate(dateString: string): Date | null {
+  if (!dateString || dateString === '0' || dateString === '') {
+    return null;
+  }
+
+  try {
+    // RDW gebruikt YYYYMMDD formaat
+    if (dateString.length === 8 && /^\d{8}$/.test(dateString)) {
+      const year = parseInt(dateString.substring(0, 4));
+      const month = parseInt(dateString.substring(4, 6)) - 1;
+      const day = parseInt(dateString.substring(6, 8));
+      const date = new Date(year, month, day);
+      return isNaN(date.getTime()) ? null : date;
+    }
+
+    // Probeer ISO datum
+    const isoDate = new Date(dateString);
+    return isNaN(isoDate.getTime()) ? null : isoDate;
+  } catch {
+    return null;
+  }
+}
+
+function extractYear(dateString: string): number {
+  const date = parseRdwDate(dateString);
+  return date ? date.getFullYear() : 0;
+}
+
+function parseNumber(value: string | null | undefined): number {
+  if (!value || value === '0' || value === '' || value === null || value === undefined) {
+    return 0;
+  }
+  const parsed = parseInt(value, 10);
+  return isNaN(parsed) ? 0 : parsed;
+}

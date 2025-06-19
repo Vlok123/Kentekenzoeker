@@ -125,13 +125,25 @@ export const useAppStore = create<AppState>()(
 
       // Notifications
       notifications: [],
-      addNotification: (notification) =>
+      addNotification: (notification) => {
+        const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const newNotification = { ...notification, id };
+        
         set((state) => ({
           notifications: [
             ...state.notifications,
-            { ...notification, id: Date.now().toString() },
+            newNotification,
           ],
-        })),
+        }));
+
+        // Auto-remove notification after duration (default 5 seconds)
+        const duration = notification.duration || 5000;
+        setTimeout(() => {
+          set((state) => ({
+            notifications: state.notifications.filter(n => n.id !== id),
+          }));
+        }, duration);
+      },
       removeNotification: (id) =>
         set((state) => ({
           notifications: state.notifications.filter(n => n.id !== id),

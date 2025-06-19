@@ -12,6 +12,9 @@ const mockUsers: User[] = [
   }
 ];
 
+// Mock saved search results
+const mockSavedSearchResults: any[] = [];
+
 // Mock JWT token (just base64 encoded user info for demo)
 const createMockToken = (user: User): string => {
   return btoa(JSON.stringify({
@@ -98,6 +101,42 @@ export class MockAuthService {
   // Get user by ID
   static async getUserById(userId: string): Promise<User | null> {
     return mockUsers.find(u => u.id === userId) || null;
+  }
+
+  // Save search results (kentekens from search)
+  static async saveSearchResults(userId: string, kentekens: string[], searchName: string, searchQuery: string, searchFilters: any) {
+    console.log('Mock: Saving search results for user', userId, { kentekens, searchName });
+    
+    const savedResult = {
+      id: Date.now().toString(),
+      user_id: userId,
+      name: searchName,
+      search_query: searchQuery,
+      search_filters: searchFilters,
+      kentekens: kentekens,
+      kenteken_count: kentekens.length,
+      created_at: new Date()
+    };
+
+    mockSavedSearchResults.push(savedResult);
+    return savedResult;
+  }
+
+  // Get saved search results for user
+  static async getSavedSearchResults(userId: string) {
+    return mockSavedSearchResults.filter(result => result.user_id === userId);
+  }
+
+  // Delete saved search result
+  static async deleteSavedSearchResult(userId: string, resultId: string) {
+    const index = mockSavedSearchResults.findIndex(result => 
+      result.id === resultId && result.user_id === userId
+    );
+    if (index > -1) {
+      mockSavedSearchResults.splice(index, 1);
+      return true;
+    }
+    return false;
   }
 
   // Mock save functions (just log for now)

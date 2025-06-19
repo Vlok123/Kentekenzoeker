@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, Download, Star, Eye } from 'lucide-react';
+import { Search, Filter, Download, Star, Eye, Save, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useVehicleSearch, useVehicleBrands, useVehicleColors } from '@/hooks/useRdw';
 import { useAppStore } from '@/store/useAppStore';
+import { MockAuthService as AuthService } from '@/lib/auth-mock';
 import { generateCsvData } from '@/utils/dataProcessing';
 import Autocomplete from '@/components/Autocomplete';
 import type { SearchFilters } from '@/types/rdw';
@@ -11,6 +12,9 @@ export default function ZoekPage() {
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState<SearchFilters>({});
   const [showFilters, setShowFilters] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveName, setSaveName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   
   const { 
     searchQuery, 
@@ -20,7 +24,10 @@ export default function ZoekPage() {
     clearSearch,
     addFavorite,
     removeFavorite,
-    isFavorite 
+    isFavorite,
+    user,
+    isAuthenticated,
+    addNotification
   } = useAppStore();
 
   // Reset search on component mount to start fresh
@@ -67,6 +74,69 @@ export default function ZoekPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleSaveResults = () => {
+    if (!isAuthenticated || !user) {
+      addNotification({
+        type: 'error',
+        title: 'Inloggen vereist',
+        message: 'Je moet ingelogd zijn om zoekresultaten op te slaan.'
+      });
+      return;
+    }
+
+    if (vehicles.length === 0) {
+      addNotification({
+        type: 'warning',
+        title: 'Geen resultaten',
+        message: 'Er zijn geen zoekresultaten om op te slaan.'
+      });
+      return;
+    }
+
+    setShowSaveModal(true);
+    setSaveName(`Zoekresultaten ${new Date().toLocaleDateString('nl-NL')}`);
+  };
+
+  const handleConfirmSave = async () => {
+    if (!saveName.trim()) {
+      addNotification({
+        type: 'error',
+        title: 'Naam vereist',
+        message: 'Geef een naam op voor je opgeslagen zoekresultaten.'
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const kentekens = vehicles.map(v => v.kenteken);
+      await AuthService.saveSearchResults(
+        user!.id, 
+        kentekens, 
+        saveName.trim(),
+        searchQuery,
+        searchFilters
+      );
+
+      addNotification({
+        type: 'success',
+        title: 'Resultaten opgeslagen',
+        message: `${kentekens.length} kentekens zijn opgeslagen als "${saveName.trim()}".`
+      });
+
+      setShowSaveModal(false);
+      setSaveName('');
+    } catch (error: any) {
+      addNotification({
+        type: 'error',
+        title: 'Opslaan mislukt',
+        message: error.message || 'Er is iets misgegaan bij het opslaan.'
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -390,6 +460,34 @@ export default function ZoekPage() {
         </div>
       )}
 
+      {/* Save Results Actions */}
+      {vehicles.length > 0 && isAuthenticated && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                <Save className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-medium text-blue-900 dark:text-blue-100">
+                  Resultaten opslaan
+                </h3>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  Sla alle {vehicles.length} gevonden kentekens op voor later gebruik
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleSaveResults}
+              className="btn btn-primary whitespace-nowrap"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              Opslaan
+            </button>
+          </div>
+        </div>
+      )}
+
       {vehicles.length > 0 && (
         <div className="space-y-4">
           {/* Results Header */}
@@ -502,6 +600,53 @@ export default function ZoekPage() {
           </p>
         </div>
       </div>
+
+             {/* Save Results Modal */}
+       {showSaveModal && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+           <div className="bg-white dark:bg-slate-800 rounded-xl p-6 w-full max-w-md">
+             <div className="flex justify-between items-center mb-4">
+               <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
+                 Resultaten opslaan
+               </h2>
+               <button
+                 onClick={() => setShowSaveModal(false)}
+                 className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+               >
+                 <X className="w-5 h-5" />
+               </button>
+             </div>
+             <div className="mb-4">
+               <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                 Je gaat {vehicles.length} kentekens opslaan
+               </p>
+               <input
+                 type="text"
+                 value={saveName}
+                 onChange={(e) => setSaveName(e.target.value)}
+                 placeholder="Naam voor deze zoekopdracht"
+                 className="input w-full"
+                 onKeyDown={(e) => e.key === 'Enter' && handleConfirmSave()}
+               />
+             </div>
+             <div className="flex gap-2">
+               <button
+                 onClick={handleConfirmSave}
+                 className="btn btn-primary flex-1"
+                 disabled={isSaving || !saveName.trim()}
+               >
+                 {isSaving ? 'Opslaan...' : 'Opslaan'}
+               </button>
+               <button
+                 onClick={() => setShowSaveModal(false)}
+                 className="btn btn-secondary"
+               >
+                 Annuleren
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
     </div>
   );
 } 
