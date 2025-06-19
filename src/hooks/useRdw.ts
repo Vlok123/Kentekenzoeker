@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { differenceInDays } from 'date-fns';
 import { processVehicleData } from '@/utils/dataProcessing';
 import { normalizeLicensePlate, matchesWildcard } from '@/utils/licensePlate';
 import { useAppStore } from '@/store/useAppStore';
@@ -10,8 +9,6 @@ import type {
   RdwApkData,
   RdwBrandstofData,
   RdwCarrosserieData,
-  RdwEmissieData,
-  RdwWegenbelastingData,
   RdwAssenData,
   ProcessedVehicle, 
   SearchFilters, 
@@ -1009,39 +1006,5 @@ export function useCompleteRdwData(kenteken: string, enabled = true) {
   });
 }
 
-// Helper functions voor de complete data hook
-function parseRdwDate(dateString: string): Date | null {
-  if (!dateString || dateString === '0' || dateString === '') {
-    return null;
-  }
 
-  try {
-    // RDW gebruikt YYYYMMDD formaat
-    if (dateString.length === 8 && /^\d{8}$/.test(dateString)) {
-      const year = parseInt(dateString.substring(0, 4));
-      const month = parseInt(dateString.substring(4, 6)) - 1;
-      const day = parseInt(dateString.substring(6, 8));
-      const date = new Date(year, month, day);
-      return isNaN(date.getTime()) ? null : date;
-    }
 
-    // Probeer ISO datum
-    const isoDate = new Date(dateString);
-    return isNaN(isoDate.getTime()) ? null : isoDate;
-  } catch {
-    return null;
-  }
-}
-
-function extractYear(dateString: string): number {
-  const date = parseRdwDate(dateString);
-  return date ? date.getFullYear() : 0;
-}
-
-function parseNumber(value: string | null | undefined): number {
-  if (!value || value === '0' || value === '' || value === null || value === undefined) {
-    return 0;
-  }
-  const parsed = parseInt(value, 10);
-  return isNaN(parsed) ? 0 : parsed;
-}

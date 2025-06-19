@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, FileText, Download, Trash2, Calendar, Hash, Settings, Eye, Star } from 'lucide-react';
+import { User, FileText, Download, Trash2, Hash, Settings, Eye, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '@/store/useAppStore';
 import { MockAuthService as AuthService } from '@/lib/auth-mock';
