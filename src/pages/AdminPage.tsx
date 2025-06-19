@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Users, Search, Car, Database, Settings, Shield } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
+import { ApiAuthService } from '@/lib/api-auth';
 
 interface AdminStats {
   totalUsers: number;
@@ -9,49 +10,41 @@ interface AdminStats {
   recentUsers: any[];
 }
 
-// Mock data for demo
-const mockStats: AdminStats = {
-  totalUsers: 3,
-  totalSavedSearches: 12,
-  totalSavedVehicles: 8,
-  recentUsers: [
-    {
-      id: '1',
-      email: 'sanderhelmink@gmail.com',
-      name: 'Sander Helmink',
-      role: 'admin',
-      created_at: new Date('2024-01-01')
-    },
-    {
-      id: '2',
-      email: 'test@example.com',
-      name: 'Test User',
-      role: 'user',
-      created_at: new Date('2024-01-15')
-    },
-    {
-      id: '3',
-      email: 'user2@test.nl',
-      name: null,
-      role: 'user',
-      created_at: new Date('2024-02-01')
-    }
-  ]
-};
+// Function to fetch real admin statistics
+async function fetchAdminStats(token: string): Promise<AdminStats> {
+  return await ApiAuthService.getAdminStats(token);
+}
 
 export default function AdminPage() {
-  const [stats, setStats] = useState<AdminStats>(mockStats);
-  const [isLoading, setIsLoading] = useState(false);
-  const { user } = useAppStore();
+  const [stats, setStats] = useState<AdminStats>({
+    totalUsers: 0,
+    totalSavedSearches: 0,
+    totalSavedVehicles: 0,
+    recentUsers: []
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const { user, token } = useAppStore();
 
   useEffect(() => {
-    // Simulate loading
-    setIsLoading(true);
-    setTimeout(() => {
-      setStats(mockStats);
-      setIsLoading(false);
-    }, 500);
-  }, []);
+    async function loadStats() {
+      if (!token || !user || user.role !== 'admin') {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const adminStats = await fetchAdminStats(token);
+        setStats(adminStats);
+      } catch (error) {
+        console.error('Failed to load admin stats:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadStats();
+  }, [token, user]);
 
   // Redirect if not admin
   if (!user || user.role !== 'admin') {
@@ -154,8 +147,8 @@ export default function AdminPage() {
               <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
                 Systeem status
               </p>
-              <p className="text-lg font-bold text-green-600">
-                Demo modus
+                              <p className="text-lg font-bold text-green-600">
+                Live
               </p>
             </div>
           </div>
@@ -219,14 +212,14 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Demo Notice */}
-      <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800 p-6">
-        <h2 className="text-xl font-bold text-yellow-800 dark:text-yellow-200 mb-2">
-          🚧 Demo Modus
+      {/* Live Notice */}
+      <div className="bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800 p-6">
+        <h2 className="text-xl font-bold text-green-800 dark:text-green-200 mb-2">
+          ✅ Live Database
         </h2>
-        <p className="text-yellow-700 dark:text-yellow-300">
-          Dit is een demo versie van het admin dashboard. In productie wordt dit verbonden met de echte 
-          Neon PostgreSQL database voor real-time statistieken en gebruikersbeheer.
+        <p className="text-green-700 dark:text-green-300">
+          Het admin dashboard is nu live verbonden met de Neon PostgreSQL database. 
+          Alle statistieken en gebruikersgegevens worden real-time opgehaald.
         </p>
       </div>
 
@@ -239,16 +232,16 @@ export default function AdminPage() {
           <div>
             <h3 className="font-medium text-slate-900 dark:text-white mb-2">Database</h3>
             <p className="text-sm text-slate-600 dark:text-slate-300">
-              Demo: In-memory storage<br />
-              Productie: PostgreSQL (Neon)<br />
-              SSL: Ingeschakeld
+              Live: PostgreSQL (Neon)<br />
+              SSL: Ingeschakeld<br />
+              Real-time data
             </p>
           </div>
           <div>
             <h3 className="font-medium text-slate-900 dark:text-white mb-2">Authenticatie</h3>
             <p className="text-sm text-slate-600 dark:text-slate-300">
-              Demo: Mock JWT Tokens<br />
-              Productie: Echte JWT + bcrypt<br />
+              Live: Echte JWT + bcrypt<br />
+              Database authenticatie<br />
               Sessie: 7 dagen
             </p>
           </div>

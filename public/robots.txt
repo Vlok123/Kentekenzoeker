@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://rdw-intelligence.vercel.app/sitemap.xml
+
+# Crawl-delay for respectful crawling
+Crawl-delay: 1
+
+# Disallow admin routes for security
+Disallow: /admin
+Disallow: /api/
+
+# Allow important pages
+Allow: /
+Allow: /zoek
+Allow: /trekgewicht
+Allow: /login 
