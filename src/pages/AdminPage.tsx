@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Users, Search, Car, Database, Settings, Shield } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
-import { pool } from '@/lib/database';
 
 interface AdminStats {
   totalUsers: number;
@@ -10,58 +9,49 @@ interface AdminStats {
   recentUsers: any[];
 }
 
+// Mock data for demo
+const mockStats: AdminStats = {
+  totalUsers: 3,
+  totalSavedSearches: 12,
+  totalSavedVehicles: 8,
+  recentUsers: [
+    {
+      id: '1',
+      email: 'sanderhelmink@gmail.com',
+      name: 'Sander Helmink',
+      role: 'admin',
+      created_at: new Date('2024-01-01')
+    },
+    {
+      id: '2',
+      email: 'test@example.com',
+      name: 'Test User',
+      role: 'user',
+      created_at: new Date('2024-01-15')
+    },
+    {
+      id: '3',
+      email: 'user2@test.nl',
+      name: null,
+      role: 'user',
+      created_at: new Date('2024-02-01')
+    }
+  ]
+};
+
 export default function AdminPage() {
-  const [stats, setStats] = useState<AdminStats>({
-    totalUsers: 0,
-    totalSavedSearches: 0,
-    totalSavedVehicles: 0,
-    recentUsers: []
-  });
-  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState<AdminStats>(mockStats);
+  const [isLoading, setIsLoading] = useState(false);
   const { user } = useAppStore();
 
   useEffect(() => {
-    loadAdminStats();
-  }, []);
-
-  const loadAdminStats = async () => {
-    try {
-      const client = await pool.connect();
-      
-      // Get total users
-      const usersResult = await client.query('SELECT COUNT(*) as count FROM users');
-      const totalUsers = parseInt(usersResult.rows[0].count);
-
-      // Get total saved searches
-      const searchesResult = await client.query('SELECT COUNT(*) as count FROM saved_searches');
-      const totalSavedSearches = parseInt(searchesResult.rows[0].count);
-
-      // Get total saved vehicles
-      const vehiclesResult = await client.query('SELECT COUNT(*) as count FROM saved_vehicles');
-      const totalSavedVehicles = parseInt(vehiclesResult.rows[0].count);
-
-      // Get recent users
-      const recentUsersResult = await client.query(`
-        SELECT id, email, name, role, created_at 
-        FROM users 
-        ORDER BY created_at DESC 
-        LIMIT 10
-      `);
-
-      setStats({
-        totalUsers,
-        totalSavedSearches,
-        totalSavedVehicles,
-        recentUsers: recentUsersResult.rows
-      });
-
-      client.release();
-    } catch (error) {
-      console.error('Error loading admin stats:', error);
-    } finally {
+    // Simulate loading
+    setIsLoading(true);
+    setTimeout(() => {
+      setStats(mockStats);
       setIsLoading(false);
-    }
-  };
+    }, 500);
+  }, []);
 
   // Redirect if not admin
   if (!user || user.role !== 'admin') {
@@ -101,7 +91,7 @@ export default function AdminPage() {
           Admin Dashboard
         </h1>
         <p className="mt-2 text-lg text-slate-600 dark:text-slate-300">
-          Beheer gebruikers en bekijk systeemstatistieken
+          Beheer gebruikers en bekijk systeemstatistieken (Demo versie)
         </p>
       </div>
 
@@ -162,10 +152,10 @@ export default function AdminPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                Database verbinding
+                Systeem status
               </p>
               <p className="text-lg font-bold text-green-600">
-                Actief
+                Demo modus
               </p>
             </div>
           </div>
@@ -229,6 +219,17 @@ export default function AdminPage() {
         </div>
       </div>
 
+      {/* Demo Notice */}
+      <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800 p-6">
+        <h2 className="text-xl font-bold text-yellow-800 dark:text-yellow-200 mb-2">
+          🚧 Demo Modus
+        </h2>
+        <p className="text-yellow-700 dark:text-yellow-300">
+          Dit is een demo versie van het admin dashboard. In productie wordt dit verbonden met de echte 
+          Neon PostgreSQL database voor real-time statistieken en gebruikersbeheer.
+        </p>
+      </div>
+
       {/* System Info */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
         <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">
@@ -238,17 +239,17 @@ export default function AdminPage() {
           <div>
             <h3 className="font-medium text-slate-900 dark:text-white mb-2">Database</h3>
             <p className="text-sm text-slate-600 dark:text-slate-300">
-              PostgreSQL (Neon)<br />
-              Verbinding: Actief<br />
+              Demo: In-memory storage<br />
+              Productie: PostgreSQL (Neon)<br />
               SSL: Ingeschakeld
             </p>
           </div>
           <div>
             <h3 className="font-medium text-slate-900 dark:text-white mb-2">Authenticatie</h3>
             <p className="text-sm text-slate-600 dark:text-slate-300">
-              JWT Tokens<br />
-              Sessie: 7 dagen<br />
-              Encryptie: bcrypt
+              Demo: Mock JWT Tokens<br />
+              Productie: Echte JWT + bcrypt<br />
+              Sessie: 7 dagen
             </p>
           </div>
         </div>

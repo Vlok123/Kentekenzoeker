@@ -8,8 +8,7 @@ import ZoekPage from '@/pages/ZoekPage';
 import LoginPage from '@/pages/LoginPage';
 import AdminPage from '@/pages/AdminPage';
 import { useAppStore } from '@/store/useAppStore';
-import { AuthService } from '@/lib/auth';
-import { initializeDatabase } from '@/lib/database';
+import { MockAuthService as AuthService } from '@/lib/auth-mock';
 
 // Protected Route component
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
@@ -39,9 +38,6 @@ function App() {
   const { user, token, setUser, setToken } = useAppStore();
 
   useEffect(() => {
-    // Initialize database on app start
-    initializeDatabase().catch(console.error);
-
     // Check if user is already logged in
     if (token && !user) {
       AuthService.verifyToken(token)

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, LogIn, UserPlus } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
-import { AuthService } from '@/lib/auth';
+import { MockAuthService as AuthService } from '@/lib/auth-mock';
 import type { LoginCredentials, RegisterData } from '@/types/auth';
 
 export default function LoginPage() {
