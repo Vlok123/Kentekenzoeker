@@ -1,27 +1,110 @@
 import { Routes, Route } from 'react-router-dom';
-import { useAppStore } from '@/store/useAppStore';
+import { useEffect } from 'react';
 import Layout from '@/components/Layout';
 import HomePage from '@/pages/HomePage';
 import TrekgewichtPage from '@/pages/TrekgewichtPage';
-import ZoekPage from '@/pages/ZoekPage';
 import VoertuigDetailPage from '@/pages/VoertuigDetailPage';
-import NotificationProvider from '@/components/NotificationProvider';
+import ZoekPage from '@/pages/ZoekPage';
+import LoginPage from '@/pages/LoginPage';
+import AdminPage from '@/pages/AdminPage';
+import { useAppStore } from '@/store/useAppStore';
+import { AuthService } from '@/lib/auth';
+import { initializeDatabase } from '@/lib/database';
+
+// Protected Route component
+function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
+  const { user, isAuthenticated } = useAppStore();
+
+  if (!isAuthenticated || !user) {
+    return <LoginPage />;
+  }
+
+  if (adminOnly && user.role !== 'admin') {
+    return (
+      <div className="max-w-4xl mx-auto text-center py-12">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+          Toegang geweigerd
+        </h1>
+        <p className="text-slate-600 dark:text-slate-300">
+          Je hebt geen administratorrechten om deze pagina te bekijken.
+        </p>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
 
 function App() {
-  const isDarkMode = useAppStore((state) => state.isDarkMode);
+  const { user, token, setUser, setToken } = useAppStore();
+
+  useEffect(() => {
+    // Initialize database on app start
+    initializeDatabase().catch(console.error);
+
+    // Check if user is already logged in
+    if (token && !user) {
+      AuthService.verifyToken(token)
+        .then((verifiedUser) => {
+          if (verifiedUser) {
+            setUser(verifiedUser);
+          } else {
+            setToken(null);
+          }
+        })
+        .catch(() => {
+          setToken(null);
+        });
+    }
+  }, [token, user, setUser, setToken]);
 
   return (
-    <div className={isDarkMode ? 'dark' : ''}>
-      <NotificationProvider />
-      <Layout>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/trekgewicht" element={<TrekgewichtPage />} />
-          <Route path="/zoek" element={<ZoekPage />} />
-          <Route path="/voertuig/:kenteken" element={<VoertuigDetailPage />} />
-        </Routes>
-      </Layout>
-    </div>
+    <Routes>
+      {/* Public routes */}
+      <Route path="/login" element={<LoginPage />} />
+      
+      {/* Routes with layout */}
+      <Route
+        path="/*"
+        element={
+          <Layout>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/trekgewicht" element={<TrekgewichtPage />} />
+              <Route path="/zoek" element={<ZoekPage />} />
+              <Route path="/voertuig/:kenteken" element={<VoertuigDetailPage />} />
+              
+              {/* Protected admin route */}
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute adminOnly>
+                    <AdminPage />
+                  </ProtectedRoute>
+                }
+              />
+              
+              {/* Protected user routes */}
+              <Route
+                path="/mijn-opgeslagen"
+                element={
+                  <ProtectedRoute>
+                    <div className="max-w-4xl mx-auto text-center py-12">
+                      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+                        Mijn opgeslagen items
+                      </h1>
+                      <p className="text-slate-600 dark:text-slate-300">
+                        Deze pagina is nog in ontwikkeling.
+                      </p>
+                    </div>
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </Layout>
+        }
+      />
+    </Routes>
   );
 }
 

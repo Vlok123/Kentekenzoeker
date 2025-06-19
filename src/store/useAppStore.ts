@@ -1,6 +1,15 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { ProcessedVehicle, SearchFilters } from '@/types/rdw';
+import type { User } from '@/types/auth';
+
+interface Notification {
+  id: string;
+  type: 'success' | 'error' | 'warning' | 'info';
+  title: string;
+  message: string;
+  duration?: number;
+}
 
 interface AppState {
   // Theme
@@ -8,20 +17,18 @@ interface AppState {
   toggleDarkMode: () => void;
 
   // Search state
+  searchQuery: string;
   searchFilters: SearchFilters;
   searchResults: ProcessedVehicle[];
   isSearching: boolean;
-  searchQuery: string;
-  setSearchFilters: (filters: SearchFilters) => void;
-  setSearchResults: (results: ProcessedVehicle[]) => void;
-  setIsSearching: (isSearching: boolean) => void;
   setSearchQuery: (query: string) => void;
+  setSearchFilters: (filters: SearchFilters) => void;
   clearSearch: () => void;
 
   // Vehicle cache
-  vehicleCache: Map<string, ProcessedVehicle>;
+  vehicleCache: Record<string, ProcessedVehicle>;
   addVehicleToCache: (kenteken: string, vehicle: ProcessedVehicle) => void;
-  getVehicleFromCache: (kenteken: string) => ProcessedVehicle | undefined;
+  getVehicleFromCache: (kenteken: string) => ProcessedVehicle | null;
 
   // Recent searches
   recentSearches: string[];
@@ -39,16 +46,24 @@ interface AppState {
   setActiveTab: (tab: string) => void;
   
   // Notifications
-  notifications: Array<{
-    id: string;
-    type: 'success' | 'error' | 'warning' | 'info';
-    title: string;
-    message: string;
-    timestamp: Date;
-  }>;
-  addNotification: (notification: Omit<AppState['notifications'][0], 'id' | 'timestamp'>) => void;
+  notifications: Notification[];
+  addNotification: (notification: Omit<Notification, 'id'>) => void;
   removeNotification: (id: string) => void;
   clearNotifications: () => void;
+
+  // Authentication
+  user: User | null;
+  token: string | null;
+  isAuthenticated: boolean;
+  setUser: (user: User | null) => void;
+  setToken: (token: string | null) => void;
+  logout: () => void;
+  
+  // Saved data
+  savedSearches: any[];
+  savedVehicles: any[];
+  setSavedSearches: (searches: any[]) => void;
+  setSavedVehicles: (vehicles: any[]) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -65,57 +80,44 @@ export const useAppStore = create<AppState>()(
       },
 
       // Search state
+      searchQuery: '',
       searchFilters: {},
       searchResults: [],
       isSearching: false,
-      searchQuery: '',
-      setSearchFilters: (filters) => set({ searchFilters: filters }),
-      setSearchResults: (results) => set({ searchResults: results }),
-      setIsSearching: (isSearching) => set({ isSearching }),
       setSearchQuery: (query) => set({ searchQuery: query }),
-      clearSearch: () => set({ 
-        searchFilters: {}, 
-        searchResults: [], 
-        searchQuery: '',
-        isSearching: false 
-      }),
+      setSearchFilters: (filters) => set({ searchFilters: filters }),
+      clearSearch: () => set({ searchQuery: '', searchFilters: {} }),
 
       // Vehicle cache
-      vehicleCache: new Map(),
-      addVehicleToCache: (kenteken, vehicle) => {
-        const cache = new Map(get().vehicleCache);
-        cache.set(kenteken, vehicle);
-        set({ vehicleCache: cache });
-      },
-      getVehicleFromCache: (kenteken) => {
-        return get().vehicleCache.get(kenteken);
-      },
+      vehicleCache: {},
+      addVehicleToCache: (kenteken, vehicle) =>
+        set((state) => ({
+          vehicleCache: { ...state.vehicleCache, [kenteken]: vehicle },
+        })),
+      getVehicleFromCache: (kenteken) => get().vehicleCache[kenteken] || null,
 
       // Recent searches
       recentSearches: [],
-      addRecentSearch: (kenteken) => {
-        const current = get().recentSearches;
-        const filtered = current.filter(k => k !== kenteken);
-        const updated = [kenteken, ...filtered].slice(0, 10); // Keep max 10 recent searches
-        set({ recentSearches: updated });
-      },
+      addRecentSearch: (kenteken) =>
+        set((state) => {
+          const filtered = state.recentSearches.filter(k => k !== kenteken);
+          return {
+            recentSearches: [kenteken, ...filtered].slice(0, 10),
+          };
+        }),
       clearRecentSearches: () => set({ recentSearches: [] }),
 
       // Favorites
       favorites: [],
-      addFavorite: (kenteken) => {
-        const current = get().favorites;
-        if (!current.includes(kenteken)) {
-          set({ favorites: [...current, kenteken] });
-        }
-      },
-      removeFavorite: (kenteken) => {
-        const current = get().favorites;
-        set({ favorites: current.filter(k => k !== kenteken) });
-      },
-      isFavorite: (kenteken) => {
-        return get().favorites.includes(kenteken);
-      },
+      addFavorite: (kenteken) =>
+        set((state) => ({
+          favorites: [...state.favorites, kenteken],
+        })),
+      removeFavorite: (kenteken) =>
+        set((state) => ({
+          favorites: state.favorites.filter(k => k !== kenteken),
+        })),
+      isFavorite: (kenteken) => get().favorites.includes(kenteken),
 
       // UI state
       activeTab: 'trekgewicht',
@@ -123,30 +125,38 @@ export const useAppStore = create<AppState>()(
 
       // Notifications
       notifications: [],
-      addNotification: (notification) => {
-        const id = Date.now().toString();
-        const newNotification = {
-          ...notification,
-          id,
-          timestamp: new Date(),
-        };
+      addNotification: (notification) =>
         set((state) => ({
-          notifications: [...state.notifications, newNotification],
-        }));
-
-        // Auto remove after 5 seconds for non-error notifications
-        if (notification.type !== 'error') {
-          setTimeout(() => {
-            get().removeNotification(id);
-          }, 5000);
-        }
-      },
-      removeNotification: (id) => {
+          notifications: [
+            ...state.notifications,
+            { ...notification, id: Date.now().toString() },
+          ],
+        })),
+      removeNotification: (id) =>
         set((state) => ({
           notifications: state.notifications.filter(n => n.id !== id),
-        }));
-      },
+        })),
       clearNotifications: () => set({ notifications: [] }),
+
+      // Authentication
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      setUser: (user) => set({ user, isAuthenticated: !!user }),
+      setToken: (token) => set({ token }),
+      logout: () => set({ 
+        user: null, 
+        token: null, 
+        isAuthenticated: false,
+        savedSearches: [],
+        savedVehicles: []
+      }),
+
+      // Saved data
+      savedSearches: [],
+      savedVehicles: [],
+      setSavedSearches: (searches) => set({ savedSearches: searches }),
+      setSavedVehicles: (vehicles) => set({ savedVehicles: vehicles }),
     }),
     {
       name: 'rdw-app-storage',
@@ -156,6 +166,9 @@ export const useAppStore = create<AppState>()(
         recentSearches: state.recentSearches,
         favorites: state.favorites,
         activeTab: state.activeTab,
+        user: state.user,
+        token: state.token,
+        isAuthenticated: state.isAuthenticated,
       }),
     }
   )

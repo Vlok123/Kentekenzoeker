@@ -1,177 +1,224 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { 
-  Car, 
-  Search, 
-  Weight, 
-  Moon, 
-  Sun, 
-  Menu, 
-  X,
-  Home
-} from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Car, Moon, Sun, Menu, X, User, LogOut, Settings, Bookmark } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '@/store/useAppStore';
+import NotificationProvider from './NotificationProvider';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-const navigation = [
-  { name: 'Home', href: '/', icon: Home },
-  { name: 'Trekgewicht', href: '/trekgewicht', icon: Weight },
-  { name: 'Zoeken', href: '/zoek', icon: Search },
-];
-
 export default function Layout({ children }: LayoutProps) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { isDarkMode, toggleDarkMode } = useAppStore();
+  const [darkMode, setDarkMode] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, isAuthenticated, logout, addNotification } = useAppStore();
 
-  const isActive = (href: string) => {
-    if (href === '/') {
-      return location.pathname === '/';
+  // Initialize dark mode from localStorage
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
+    setDarkMode(savedDarkMode);
+    if (savedDarkMode) {
+      document.documentElement.classList.add('dark');
     }
-    return location.pathname.startsWith(href);
+  }, []);
+
+  // Toggle dark mode
+  const toggleDarkMode = () => {
+    const newDarkMode = !darkMode;
+    setDarkMode(newDarkMode);
+    localStorage.setItem('darkMode', newDarkMode.toString());
+    if (newDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   };
 
+  const handleLogout = () => {
+    logout();
+    addNotification({
+      type: 'success',
+      title: 'Uitgelogd',
+      message: 'Je bent succesvol uitgelogd.'
+    });
+    setUserMenuOpen(false);
+    navigate('/');
+  };
+
+  const navigation = [
+    { name: 'Home', href: '/' },
+    { name: 'Trekgewicht', href: '/trekgewicht' },
+    { name: 'Zoeken', href: '/zoek' },
+  ];
+
+  // Add admin nav for admin users
+  if (user?.role === 'admin') {
+    navigation.push({ name: 'Admin', href: '/admin' });
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      {/* Header */}
-      <header className="bg-white dark:bg-slate-800 shadow-sm border-b border-slate-200 dark:border-slate-700">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors">
+      <NotificationProvider />
+      
+      {/* Navigation */}
+      <nav className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
+          <div className="flex justify-between h-16">
+            {/* Logo and brand */}
             <div className="flex items-center">
               <Link to="/" className="flex items-center space-x-2">
-                <Car className="h-8 w-8 text-primary-600" />
+                <div className="flex items-center justify-center w-8 h-8 bg-primary-600 rounded-lg">
+                  <Car className="w-5 h-5 text-white" />
+                </div>
                 <span className="text-xl font-bold text-slate-900 dark:text-white">
                   RDW App
                 </span>
               </Link>
             </div>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex space-x-8">
-              {navigation.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isActive(item.href)
-                        ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-100'
-                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span>{item.name}</span>
-                  </Link>
-                );
-              })}
-            </nav>
+            {/* Desktop navigation */}
+            <div className="hidden md:flex md:items-center md:space-x-8">
+              {navigation.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    location.pathname === item.href
+                      ? 'text-primary-600 bg-primary-50 dark:bg-primary-900 dark:text-primary-400'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              ))}
+            </div>
 
-            {/* Right side actions */}
+            {/* Right side buttons */}
             <div className="flex items-center space-x-2">
               {/* Dark mode toggle */}
               <button
                 onClick={toggleDarkMode}
-                className="p-2 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors"
+                className="p-2 rounded-md text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                 aria-label="Toggle dark mode"
               >
-                {isDarkMode ? (
-                  <Sun className="h-5 w-5" />
-                ) : (
-                  <Moon className="h-5 w-5" />
-                )}
+                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
+
+              {/* Authentication */}
+              {isAuthenticated && user ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setUserMenuOpen(!userMenuOpen)}
+                    className="flex items-center space-x-2 p-2 rounded-md text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    <User className="w-5 h-5" />
+                    <span className="hidden sm:block text-sm font-medium">
+                      {user.name || user.email.split('@')[0]}
+                    </span>
+                  </button>
+
+                  {/* User dropdown menu */}
+                  {userMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-md shadow-lg border border-slate-200 dark:border-slate-700 py-1 z-50">
+                      <div className="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
+                        <p className="font-medium">{user.name || 'Gebruiker'}</p>
+                        <p className="text-xs">{user.email}</p>
+                        {user.role === 'admin' && (
+                          <span className="inline-flex mt-1 px-2 py-1 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded-full">
+                            Admin
+                          </span>
+                        )}
+                      </div>
+                      
+                      <Link
+                        to="/mijn-opgeslagen"
+                        className="flex items-center px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+                        onClick={() => setUserMenuOpen(false)}
+                      >
+                        <Bookmark className="w-4 h-4 mr-2" />
+                        Mijn opgeslagen
+                      </Link>
+
+                      {user.role === 'admin' && (
+                        <Link
+                          to="/admin"
+                          className="flex items-center px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+                          onClick={() => setUserMenuOpen(false)}
+                        >
+                          <Settings className="w-4 h-4 mr-2" />
+                          Admin Dashboard
+                        </Link>
+                      )}
+
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Uitloggen
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link
+                  to="/login"
+                  className="btn btn-primary"
+                >
+                  Inloggen
+                </Link>
+              )}
 
               {/* Mobile menu button */}
               <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="md:hidden p-2 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden p-2 rounded-md text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                 aria-label="Open menu"
               >
-                {isMobileMenuOpen ? (
-                  <X className="h-5 w-5" />
-                ) : (
-                  <Menu className="h-5 w-5" />
-                )}
+                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
             </div>
           </div>
-        </div>
 
-        {/* Mobile Navigation */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-slate-200 dark:border-slate-700">
-            <div className="px-4 pt-2 pb-3 space-y-1">
-              {navigation.map((item) => {
-                const Icon = item.icon;
-                return (
+          {/* Mobile navigation menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden border-t border-slate-200 dark:border-slate-700 py-2">
+              <div className="space-y-1">
+                {navigation.map((item) => (
                   <Link
                     key={item.name}
                     to={item.href}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                      isActive(item.href)
-                        ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-100'
-                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700'
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                      location.pathname === item.href
+                        ? 'text-primary-600 bg-primary-50 dark:bg-primary-900 dark:text-primary-400'
+                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700'
                     }`}
                   >
-                    <Icon className="h-5 w-5" />
-                    <span>{item.name}</span>
+                    {item.name}
                   </Link>
-                );
-              })}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-      </header>
+          )}
+        </div>
+      </nav>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Main content */}
+      <main className="py-8 px-4 sm:px-6 lg:px-8">
         {children}
       </main>
 
-      {/* Footer */}
-      <footer className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <div className="text-sm text-slate-600 dark:text-slate-400">
-              © 2024 RDW App. Data van{' '}
-              <a 
-                href="https://opendata.rdw.nl" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-              >
-                opendata.rdw.nl
-              </a>
-            </div>
-            <div className="flex space-x-6 text-sm">
-              <a
-                href="#"
-                className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
-              >
-                Privacy
-              </a>
-              <a
-                href="#"
-                className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
-              >
-                Voorwaarden
-              </a>
-              <a
-                href="#"
-                className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
-              >
-                Contact
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      {/* Click outside to close dropdown */}
+      {userMenuOpen && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setUserMenuOpen(false)}
+        />
+      )}
     </div>
   );
 } 
