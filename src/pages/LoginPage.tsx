@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, User, LogIn, UserPlus } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, LogIn, UserPlus, AlertCircle } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { MockAuthService as AuthService } from '@/lib/auth-mock';
 import type { LoginCredentials, RegisterData } from '@/types/auth';
@@ -9,6 +9,7 @@ export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string>('');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -23,9 +24,22 @@ export default function LoginPage() {
   // Get the redirect path from location state, default to home
   const from = location.state?.from?.pathname || '/';
 
+  // Clear error when switching between login/register
+  useEffect(() => {
+    setError('');
+  }, [isLogin]);
+
+  // Clear error when user starts typing
+  useEffect(() => {
+    if (error) {
+      setError('');
+    }
+  }, [formData.email, formData.password]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
 
     try {
       if (isLogin) {
@@ -49,20 +63,12 @@ export default function LoginPage() {
       } else {
         // Register
         if (formData.password !== formData.confirmPassword) {
-          addNotification({
-            type: 'error',
-            title: 'Wachtwoorden komen niet overeen',
-            message: 'Controleer je wachtwoord en probeer opnieuw.'
-          });
+          setError('Wachtwoorden komen niet overeen');
           return;
         }
 
         if (formData.password.length < 6) {
-          addNotification({
-            type: 'error',
-            title: 'Wachtwoord te kort',
-            message: 'Je wachtwoord moet minimaal 6 karakters lang zijn.'
-          });
+          setError('Je wachtwoord moet minimaal 6 karakters lang zijn');
           return;
         }
 
@@ -85,11 +91,16 @@ export default function LoginPage() {
         navigate(from, { replace: true });
       }
     } catch (error: any) {
-      addNotification({
-        type: 'error',
-        title: isLogin ? 'Inloggen mislukt' : 'Registreren mislukt',
-        message: error.message || 'Er is iets misgegaan. Probeer het opnieuw.'
-      });
+      // Set specific error message based on the error
+      if (error.message.includes('Gebruiker niet gevonden')) {
+        setError('Dit email adres is niet bekend. Controleer je email of maak een nieuw account aan.');
+      } else if (error.message.includes('Ongeldig wachtwoord')) {
+        setError('Het wachtwoord is incorrect. Controleer je wachtwoord en probeer opnieuw.');
+      } else if (error.message.includes('Gebruiker bestaat al')) {
+        setError('Er bestaat al een account met dit email adres. Probeer in te loggen.');
+      } else {
+        setError(error.message || 'Er is iets misgegaan. Probeer het opnieuw.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -126,7 +137,15 @@ export default function LoginPage() {
 
         {/* Form */}
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-lg">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Error message */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4" autoComplete="on">
             {/* Name field (only for registration) */}
             {!isLogin && (
               <div>
@@ -141,6 +160,7 @@ export default function LoginPage() {
                     value={formData.name}
                     onChange={handleInputChange}
                     placeholder="Je naam"
+                    autoComplete="name"
                     className="input pl-10"
                   />
                 </div>
@@ -161,6 +181,7 @@ export default function LoginPage() {
                   onChange={handleInputChange}
                   required
                   placeholder="je@email.com"
+                  autoComplete={isLogin ? "email" : "email"}
                   className="input pl-10"
                 />
               </div>
@@ -180,6 +201,7 @@ export default function LoginPage() {
                   onChange={handleInputChange}
                   required
                   placeholder={isLogin ? 'Je wachtwoord' : 'Minimaal 6 karakters'}
+                  autoComplete={isLogin ? "current-password" : "new-password"}
                   className="input pl-10 pr-10"
                 />
                 <button
@@ -206,7 +228,8 @@ export default function LoginPage() {
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
                     required
-                    placeholder="Herhaal je wachtwoord"
+                    placeholder="Bevestig je wachtwoord"
+                    autoComplete="new-password"
                     className="input pl-10"
                   />
                 </div>
@@ -217,10 +240,13 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="btn btn-primary w-full flex items-center justify-center gap-2"
+              className="w-full bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
               {isLoading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  {isLogin ? 'Inloggen...' : 'Account aanmaken...'}
+                </>
               ) : (
                 <>
                   {isLogin ? <LogIn className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
@@ -249,21 +275,10 @@ export default function LoginPage() {
 
           {/* Beta notice */}
           <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-            <p className="text-sm text-amber-700 dark:text-amber-300">
-              <strong>🚧 Beta versie</strong><br />
-              Deze site is nog in ontwikkeling. Er kunnen dagelijks nieuwe functies worden toegevoegd en verbeteringen doorgevoerd worden.
+            <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
+              🚧 Dit is een demo versie. Je gegevens worden alleen lokaal opgeslagen.
             </p>
           </div>
-        </div>
-
-        {/* Back to home */}
-        <div className="text-center mt-6">
-          <Link
-            to="/"
-            className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-          >
-            ← Terug naar homepage
-          </Link>
         </div>
       </div>
     </div>
