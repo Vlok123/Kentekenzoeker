@@ -1,7 +1,5 @@
-import { useEffect } from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAppStore } from '@/store/useAppStore';
-import { ApiAuthService } from '@/lib/api-auth';
 import Layout from '@/components/Layout';
 import NotificationProvider from '@/components/NotificationProvider';
 
@@ -25,39 +23,37 @@ function LayoutWrapper() {
 }
 
 function App() {
-  const { user, token, setUser, logout, addNotification } = useAppStore();
+  const { user } = useAppStore();
 
-  // Verify token on app load
-  useEffect(() => {
-    const verifyUserToken = async () => {
-      if (token && !user) {
-        try {
-          const verifiedUser = await ApiAuthService.verifyToken(token);
-          if (verifiedUser) {
-            setUser(verifiedUser);
-          } else {
-            // Token is invalid, clear it
-            logout();
-            addNotification({
-              type: 'warning',
-              title: 'Sessie verlopen',
-              message: 'Je sessie is verlopen. Log opnieuw in.'
-            });
-          }
-        } catch (error) {
-          console.error('Token verification failed:', error);
-          logout();
-          addNotification({
-            type: 'error',
-            title: 'Authenticatie fout',
-            message: 'Er was een probleem met je sessie. Log opnieuw in.'
-          });
-        }
-      }
-    };
-
-    verifyUserToken();
-  }, [token, user, setUser, logout, addNotification]);
+  // Token verification disabled for stability
+  // useEffect(() => {
+  //   const verifyUserToken = async () => {
+  //     if (token && !user) {
+  //       try {
+  //         const verifiedUser = await ApiAuthService.verifyToken(token);
+  //         if (verifiedUser) {
+  //           setUser(verifiedUser);
+  //         } else {
+  //           logout();
+  //           addNotification({
+  //             type: 'warning',
+  //             title: 'Sessie verlopen',
+  //             message: 'Je sessie is verlopen. Log opnieuw in.'
+  //           });
+  //         }
+  //       } catch (error) {
+  //         console.error('Token verification failed:', error);
+  //         logout();
+  //         addNotification({
+  //           type: 'error',
+  //           title: 'Authenticatie fout',
+  //           message: 'Er was een probleem met je sessie. Log opnieuw in.'
+  //         });
+  //       }
+  //     }
+  //   };
+  //   verifyUserToken();
+  // }, [token, user, setUser, logout, addNotification]);
 
   return (
     <>
