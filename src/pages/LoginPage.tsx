@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, LogIn, UserPlus } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
-import { ApiAuthService as AuthService } from '@/lib/api-auth';
+import { MockAuthService as AuthService } from '@/lib/auth-mock';
 import type { LoginCredentials, RegisterData } from '@/types/auth';
 
 export default function LoginPage() {
@@ -79,7 +79,7 @@ export default function LoginPage() {
         addNotification({
           type: 'success',
           title: 'Account aangemaakt',
-          message: `Welkom bij RDW App, ${response.user.name || response.user.email}!`
+          message: `Welkom bij Mijn Kenteken Check, ${response.user.name || response.user.email}!`
         });
 
         navigate(from, { replace: true });
@@ -103,15 +103,15 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 mb-4">
-            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">R</span>
+          <Link to="/" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold">M</span>
             </div>
-            <span className="font-semibold">RDW App</span>
+            <span className="font-semibold">Mijn Kenteken Check</span>
           </Link>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
             {isLogin ? 'Inloggen' : 'Account aanmaken'}
@@ -238,7 +238,7 @@ export default function LoginPage() {
                 setIsLogin(!isLogin);
                 setFormData({ email: '', password: '', name: '', confirmPassword: '' });
               }}
-              className="text-primary-600 hover:text-primary-700 font-medium"
+              className="text-blue-600 hover:text-blue-700 font-medium"
             >
               {isLogin 
                 ? 'Nog geen account? Maak er een aan' 
@@ -246,6 +246,17 @@ export default function LoginPage() {
               }
             </button>
           </div>
+
+          {/* Demo credentials */}
+          {isLogin && (
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                <strong>🔑 Demo inloggegevens:</strong><br />
+                Email: sanderhelmink@gmail.com<br />
+                Wachtwoord: admin123!
+              </p>
+            </div>
+          )}
 
           {/* Beta notice */}
           <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
