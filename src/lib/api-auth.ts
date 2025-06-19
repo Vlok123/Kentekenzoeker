@@ -1,7 +1,7 @@
 import type { User, LoginCredentials, RegisterData, AuthResponse } from '@/types/auth';
 
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://mijnkentekencheck.nl/api' 
+  ? '/api' 
   : '/api';
 
 export class ApiAuthService {

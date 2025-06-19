@@ -9,6 +9,29 @@ const pool = new Pool({
 });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Enable CORS
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'https://mijnkentekencheck.nl',
+    'https://www.mijnkentekencheck.nl',
+    'http://localhost:5173',
+    'http://localhost:3000'
+  ];
+  
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', 'https://www.mijnkentekencheck.nl');
+  }
+  
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cleanup-key');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
