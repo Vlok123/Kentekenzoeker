@@ -1,12 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Zap, Car, ArrowRight, ChevronDown } from 'lucide-react';
-import { normalizeLicensePlate } from '@/utils/licensePlate';
+import { Zap, Car, ArrowRight, ChevronDown, Search, Target, BarChart3 } from 'lucide-react';
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const heroRef = useRef<HTMLDivElement>(null);
   const [scrollY, setScrollY] = useState(0);
@@ -28,14 +25,6 @@ export default function HomePage() {
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      const normalized = normalizeLicensePlate(searchQuery.trim());
-      navigate(`/voertuig/${normalized}`);
-    }
-  };
 
   const navigateToTrekgewicht = () => {
     navigate('/trekgewicht');
@@ -96,39 +85,58 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Search Section */}
-          <div className="mb-16">
-            <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
-              <div 
-                className={`relative group transition-all duration-500 ${
-                  isSearchFocused ? 'scale-105' : 'scale-100'
-                }`}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl blur-xl opacity-20 group-hover:opacity-30 transition-opacity duration-300" />
-                <div className="relative glass-card p-6 sm:p-8">
-                  <div className="flex items-center space-x-4">
-                    <Search className="h-6 w-6 text-slate-500 dark:text-white/60 flex-shrink-0" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onFocus={() => setIsSearchFocused(true)}
-                      onBlur={() => setIsSearchFocused(false)}
-                      placeholder="Voer kenteken in (bijv. 12-ABC-3)"
-                      className="flex-1 bg-transparent text-slate-900 dark:text-white text-lg sm:text-xl placeholder-slate-500 dark:placeholder-white/50 border-none outline-none"
-                    />
-                    <button
-                      type="submit"
-                      disabled={!searchQuery.trim()}
-                      className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 flex items-center space-x-2 shadow-lg shadow-blue-500/25"
-                    >
-                      <span>Zoek</span>
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
-                  </div>
+          {/* How it Works Section */}
+          <div className="mb-16 max-w-4xl mx-auto">
+            <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-8 text-center">
+              Hoe werkt RDW Intelligence?
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Search Explanation */}
+              <div className="glass-card p-6 text-center">
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-3 rounded-xl w-fit mx-auto mb-4">
+                  <Search className="h-6 w-6 text-white" />
                 </div>
+                <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">
+                  Zoeken
+                </h4>
+                <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">
+                  Zoek voertuigen op kenteken, merk, model of andere criteria. 
+                  Krijg direct toegang tot alle RDW gegevens inclusief APK, 
+                  technische specs en historie.
+                </p>
               </div>
-            </form>
+
+              {/* Towing Explanation */}
+              <div className="glass-card p-6 text-center">
+                <div className="bg-gradient-to-r from-orange-500 to-red-500 p-3 rounded-xl w-fit mx-auto mb-4">
+                  <Target className="h-6 w-6 text-white" />
+                </div>
+                <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">
+                  Trekgewicht Check
+                </h4>
+                <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">
+                  Controleer of je voertuig veilig kan trekken wat je wilt. 
+                  Voer het kenteken en gewicht in voor een instant veiligheidscheck 
+                  gebaseerd op officiële RDW data.
+                </p>
+              </div>
+
+              {/* Future Features */}
+              <div className="glass-card p-6 text-center">
+                <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-3 rounded-xl w-fit mx-auto mb-4">
+                  <BarChart3 className="h-6 w-6 text-white" />
+                </div>
+                <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">
+                  Binnenkort
+                </h4>
+                <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">
+                  Kentekenvergelijkers, waardebepalingen, onderhoudshistorie 
+                  en nog veel meer functies komen binnenkort beschikbaar. 
+                  De site is volop in ontwikkeling!
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Action Cards */}
@@ -152,7 +160,7 @@ export default function HomePage() {
                   </h3>
                   <p className="text-slate-600 dark:text-white/70 leading-relaxed">
                     Controleer of je voertuig veilig kan trekken wat je wilt. 
-                    Instant resultaat met officiële RDW data.
+                    Klik hier om de trekgewicht checker te gebruiken.
                   </p>
                 </div>
               </div>
@@ -173,11 +181,11 @@ export default function HomePage() {
                     <ArrowRight className="h-6 w-6 text-slate-400 dark:text-white/60 group-hover:text-slate-600 dark:group-hover:text-white group-hover:translate-x-1 transition-all duration-300" />
                   </div>
                   <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
-                    Geavanceerd Zoeken
+                    Voertuigen Zoeken
                   </h3>
                   <p className="text-slate-600 dark:text-white/70 leading-relaxed">
-                    Zoek voertuigen op merk, model, bouwjaar en meer. 
-                    Krachtige filters en bulk export.
+                    Zoek voertuigen op kenteken, merk, model, bouwjaar en meer. 
+                    Klik hier om te beginnen met zoeken.
                   </p>
                 </div>
               </div>
