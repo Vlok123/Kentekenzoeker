@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Download, Trash2, Calendar, Hash, FileText } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
-import { MockAuthService as AuthService } from '@/lib/auth-mock';
+import { ApiAuthService as AuthService } from '@/lib/api-auth';
 
 export default function MijnOpgeslagenPage() {
   const [savedResults, setSavedResults] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user, isAuthenticated, addNotification } = useAppStore();
+  const { user, isAuthenticated, addNotification, token } = useAppStore();
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -16,10 +16,15 @@ export default function MijnOpgeslagenPage() {
 
   const loadSavedResults = async () => {
     try {
-      const results = await AuthService.getSavedSearchResults(user!.id);
+      const results = await AuthService.getSavedSearchResults(token!);
       setSavedResults(results);
     } catch (error) {
       console.error('Error loading saved results:', error);
+      addNotification({
+        type: 'error',
+        title: 'Fout bij laden',
+        message: 'Kon opgeslagen resultaten niet laden.'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -63,7 +68,7 @@ export default function MijnOpgeslagenPage() {
     }
 
     try {
-      await AuthService.deleteSavedSearchResult(user!.id, resultId);
+      await AuthService.deleteSavedSearchResult(token!, resultId);
       setSavedResults(prev => prev.filter(r => r.id !== resultId));
       
       addNotification({

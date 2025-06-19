@@ -10,7 +10,7 @@ import AdminPage from '@/pages/AdminPage';
 import MijnOpgeslagenPage from '@/pages/MijnOpgeslagenPage';
 import DashboardPage from '@/pages/DashboardPage';
 import { useAppStore } from '@/store/useAppStore';
-import { MockAuthService as AuthService } from '@/lib/auth-mock';
+import { ApiAuthService as AuthService } from '@/lib/api-auth';
 
 // Protected Route component
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {

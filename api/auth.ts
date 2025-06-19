@@ -35,6 +35,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return await handleVerify(req, res);
       case 'admin-stats':
         return await handleAdminStats(req, res);
+      case 'admin-logs':
+        return await handleAdminLogs(req, res);
+      case 'save-search-results':
+        return await handleSaveSearchResults(req, res);
+      case 'get-saved-searches':
+        return await handleGetSavedSearches(req, res);
+      case 'delete-saved-search':
+        return await handleDeleteSavedSearch(req, res);
+      case 'save-vehicle':
+        return await handleSaveVehicle(req, res);
+      case 'get-saved-vehicles':
+        return await handleGetSavedVehicles(req, res);
+      case 'cleanup-old-data':
+        return await handleCleanupOldData(req, res);
       default:
         return res.status(400).json({ error: 'Invalid action' });
     }
@@ -88,6 +102,9 @@ async function handleLogin(req: VercelRequest, res: VercelResponse) {
       created_at: user.created_at,
       updated_at: user.updated_at
     };
+
+    // Log login activity
+    await logActivity(user.id, 'LOGIN', { email: user.email }, req);
 
     return res.status(200).json({ user: userData, token });
   } finally {
@@ -151,6 +168,9 @@ async function handleRegister(req: VercelRequest, res: VercelResponse) {
       created_at: user.created_at,
       updated_at: user.updated_at
     };
+
+    // Log registration activity
+    await logActivity(user.id, 'REGISTER', { email: user.email, name: user.name }, req);
 
     return res.status(201).json({ user: userData, token });
   } finally {
@@ -253,6 +273,360 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
         totalSavedVehicles,
         recentUsers
       });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    return res.status(401).json({ error: 'Ongeldig token' });
+  }
+}
+
+// Helper function to log user activity
+async function logActivity(userId: string, action: string, details: any = {}, req: VercelRequest) {
+  const client = await pool.connect();
+  try {
+    const ipAddress = req.headers['x-forwarded-for'] || req.connection?.remoteAddress || null;
+    const userAgent = req.headers['user-agent'] || null;
+    
+    await client.query(
+      `INSERT INTO activity_logs (user_id, action, details, ip_address, user_agent)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [userId, action, JSON.stringify(details), ipAddress, userAgent]
+    );
+  } catch (error) {
+    console.error('Failed to log activity:', error);
+  } finally {
+    client.release();
+  }
+}
+
+async function handleAdminLogs(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Geen autorisatie token' });
+  }
+
+  const token = authHeader.substring(7);
+  const { page = '1', limit = '50' } = req.query;
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    
+    const client = await pool.connect();
+    try {
+      const userResult = await client.query(
+        'SELECT role FROM users WHERE id = $1',
+        [decoded.userId]
+      );
+
+      if (userResult.rows.length === 0 || userResult.rows[0].role !== 'admin') {
+        return res.status(403).json({ error: 'Geen admin rechten' });
+      }
+
+      const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+
+      // Get activity logs with user information
+      const logsResult = await client.query(`
+        SELECT 
+          al.id,
+          al.action,
+          al.details,
+          al.ip_address,
+          al.user_agent,
+          al.created_at,
+          u.email,
+          u.name,
+          u.role
+        FROM activity_logs al
+        JOIN users u ON al.user_id = u.id
+        ORDER BY al.created_at DESC
+        LIMIT $1 OFFSET $2
+      `, [parseInt(limit as string), offset]);
+
+      // Get total count for pagination
+      const countResult = await client.query('SELECT COUNT(*) as count FROM activity_logs');
+      const totalCount = parseInt(countResult.rows[0].count);
+
+      return res.status(200).json({
+        logs: logsResult.rows,
+        pagination: {
+          page: parseInt(page as string),
+          limit: parseInt(limit as string),
+          total: totalCount,
+          pages: Math.ceil(totalCount / parseInt(limit as string))
+        }
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    return res.status(401).json({ error: 'Ongeldig token' });
+  }
+}
+
+async function handleSaveSearchResults(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Geen autorisatie token' });
+  }
+
+  const token = authHeader.substring(7);
+  const { kentekens, name, searchQuery, searchFilters } = req.body;
+
+  if (!kentekens || !Array.isArray(kentekens) || !name) {
+    return res.status(400).json({ error: 'Kentekens en naam zijn verplicht' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `INSERT INTO saved_searches (user_id, search_query, search_filters, name, kentekens)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING *`,
+        [decoded.userId, searchQuery || null, JSON.stringify(searchFilters || {}), name, JSON.stringify(kentekens)]
+      );
+
+      // Log activity
+      await logActivity(decoded.userId, 'SAVE_SEARCH_RESULTS', {
+        name,
+        kenteken_count: kentekens.length,
+        search_query: searchQuery
+      }, req);
+
+      return res.status(201).json({
+        id: result.rows[0].id,
+        name: result.rows[0].name,
+        kentekens,
+        kenteken_count: kentekens.length,
+        created_at: result.rows[0].created_at
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    return res.status(401).json({ error: 'Ongeldig token' });
+  }
+}
+
+async function handleGetSavedSearches(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Geen autorisatie token' });
+  }
+
+  const token = authHeader.substring(7);
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `SELECT * FROM saved_searches 
+         WHERE user_id = $1 
+         ORDER BY created_at DESC`,
+        [decoded.userId]
+      );
+
+      // Parse kentekens from JSONB and add kenteken_count
+      const searches = result.rows.map(search => ({
+        ...search,
+        kentekens: search.kentekens || [],
+        kenteken_count: (search.kentekens || []).length
+      }));
+
+      return res.status(200).json(searches);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    return res.status(401).json({ error: 'Ongeldig token' });
+  }
+}
+
+async function handleDeleteSavedSearch(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'DELETE') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Geen autorisatie token' });
+  }
+
+  const token = authHeader.substring(7);
+  const { searchId } = req.body;
+
+  if (!searchId) {
+    return res.status(400).json({ error: 'Search ID is verplicht' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `DELETE FROM saved_searches 
+         WHERE id = $1 AND user_id = $2
+         RETURNING name`,
+        [searchId, decoded.userId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Opgeslagen zoekopdracht niet gevonden' });
+      }
+
+      // Log activity
+      await logActivity(decoded.userId, 'DELETE_SAVED_SEARCH', {
+        search_id: searchId,
+        name: result.rows[0].name
+      }, req);
+
+      return res.status(200).json({ message: 'Opgeslagen zoekopdracht verwijderd' });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    return res.status(401).json({ error: 'Ongeldig token' });
+  }
+}
+
+async function handleSaveVehicle(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Geen autorisatie token' });
+  }
+
+  const token = authHeader.substring(7);
+  const { kenteken, vehicleData, notes } = req.body;
+
+  if (!kenteken || !vehicleData) {
+    return res.status(400).json({ error: 'Kenteken en voertuigdata zijn verplicht' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    
+    const client = await pool.connect();
+    try {
+      // Check if vehicle is already saved
+      const existing = await client.query(
+        'SELECT id FROM saved_vehicles WHERE user_id = $1 AND kenteken = $2',
+        [decoded.userId, kenteken]
+      );
+
+      if (existing.rows.length > 0) {
+        return res.status(409).json({ error: 'Dit voertuig is al opgeslagen' });
+      }
+
+      const result = await client.query(
+        `INSERT INTO saved_vehicles (user_id, kenteken, vehicle_data, notes)
+         VALUES ($1, $2, $3, $4)
+         RETURNING *`,
+        [decoded.userId, kenteken, JSON.stringify(vehicleData), notes]
+      );
+
+      // Log activity
+      await logActivity(decoded.userId, 'SAVE_VEHICLE', {
+        kenteken,
+        notes: notes || null
+      }, req);
+
+      return res.status(201).json(result.rows[0]);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    return res.status(401).json({ error: 'Ongeldig token' });
+  }
+}
+
+async function handleGetSavedVehicles(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Geen autorisatie token' });
+  }
+
+  const token = authHeader.substring(7);
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `SELECT * FROM saved_vehicles 
+         WHERE user_id = $1 
+         ORDER BY created_at DESC`,
+        [decoded.userId]
+      );
+
+      return res.status(200).json(result.rows);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    return res.status(401).json({ error: 'Ongeldig token' });
+  }
+}
+
+async function handleCleanupOldData(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Geen autorisatie token' });
+  }
+
+  const token = authHeader.substring(7);
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    
+    const client = await pool.connect();
+    try {
+      const userResult = await client.query(
+        'SELECT role FROM users WHERE id = $1',
+        [decoded.userId]
+      );
+
+      if (userResult.rows.length === 0 || userResult.rows[0].role !== 'admin') {
+        return res.status(403).json({ error: 'Geen admin rechten' });
+      }
+
+      // Execute cleanup function
+      await client.query('SELECT cleanup_old_saved_vehicles()');
+
+      // Log activity
+      await logActivity(decoded.userId, 'CLEANUP_OLD_DATA', {}, req);
+
+      return res.status(200).json({ message: 'Oude data succesvol opgeschoond' });
     } finally {
       client.release();
     }

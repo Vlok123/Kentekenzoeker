@@ -38,6 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         search_query TEXT,
         search_filters JSONB,
         name VARCHAR(255) NOT NULL,
+        kentekens JSONB DEFAULT '[]'::jsonb,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -52,6 +53,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Activity logs table for tracking user actions
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS activity_logs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        action VARCHAR(100) NOT NULL,
+        details JSONB,
+        ip_address INET,
+        user_agent TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id ON activity_logs(user_id);
+      CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at DESC);
+    `);
+
+    // Create cleanup function for old saved vehicles (30 days)
+    await client.query(`
+      CREATE OR REPLACE FUNCTION cleanup_old_saved_vehicles()
+      RETURNS void AS $$
+      BEGIN
+        DELETE FROM saved_vehicles 
+        WHERE created_at < NOW() - INTERVAL '30 days';
+        
+        DELETE FROM saved_searches 
+        WHERE created_at < NOW() - INTERVAL '30 days';
+      END;
+      $$ LANGUAGE plpgsql;
     `);
 
     // Create admin user if not exists

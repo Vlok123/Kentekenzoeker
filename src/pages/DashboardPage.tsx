@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { User, FileText, Download, Trash2, Hash, Settings, Eye, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '@/store/useAppStore';
-import { MockAuthService as AuthService } from '@/lib/auth-mock';
+import { ApiAuthService as AuthService } from '@/lib/api-auth';
 
 export default function DashboardPage() {
   const [savedResults, setSavedResults] = useState<any[]>([]);
@@ -14,7 +14,7 @@ export default function DashboardPage() {
     favoriteKentekens: 0
   });
   
-  const { user, isAuthenticated, addNotification, favorites } = useAppStore();
+  const { user, isAuthenticated, addNotification, favorites, token } = useAppStore();
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -24,7 +24,7 @@ export default function DashboardPage() {
 
   const loadUserData = async () => {
     try {
-      const results = await AuthService.getSavedSearchResults(user!.id);
+      const results = await AuthService.getSavedSearchResults(token!);
       setSavedResults(results);
       
       // Calculate stats
@@ -37,6 +37,11 @@ export default function DashboardPage() {
       });
     } catch (error) {
       console.error('Error loading user data:', error);
+      addNotification({
+        type: 'error',
+        title: 'Fout bij laden',
+        message: 'Kon gebruikersdata niet laden.'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +84,7 @@ export default function DashboardPage() {
     }
 
     try {
-      await AuthService.deleteSavedSearchResult(user!.id, resultId);
+      await AuthService.deleteSavedSearchResult(token!, resultId);
       setSavedResults(prev => prev.filter(r => r.id !== resultId));
       
       // Update stats

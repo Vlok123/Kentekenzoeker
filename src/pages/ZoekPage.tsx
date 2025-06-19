@@ -3,7 +3,7 @@ import { Search, Filter, Download, Star, Eye, Save, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useVehicleSearch, useVehicleBrands, useVehicleColors } from '@/hooks/useRdw';
 import { useAppStore } from '@/store/useAppStore';
-import { MockAuthService as AuthService } from '@/lib/auth-mock';
+import { ApiAuthService as AuthService } from '@/lib/api-auth';
 import { generateCsvData } from '@/utils/dataProcessing';
 import Autocomplete from '@/components/Autocomplete';
 import type { SearchFilters } from '@/types/rdw';
@@ -27,7 +27,8 @@ export default function ZoekPage() {
     isFavorite,
     user,
     isAuthenticated,
-    addNotification
+    addNotification,
+    token
   } = useAppStore();
 
   // Reset search on component mount to start fresh
@@ -113,7 +114,7 @@ export default function ZoekPage() {
     try {
       const kentekens = vehicles.map(v => v.kenteken);
       await AuthService.saveSearchResults(
-        user!.id, 
+        token!, 
         kentekens, 
         saveName.trim(),
         searchQuery,
