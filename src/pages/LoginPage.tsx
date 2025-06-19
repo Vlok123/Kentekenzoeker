@@ -247,16 +247,13 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {/* Admin info */}
-          {isLogin && (
-            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <p className="text-sm text-blue-700 dark:text-blue-300">
-                <strong>Admin toegang:</strong><br />
-                Email: sanderhelmink@gmail.com<br />
-                Wachtwoord: admin123!
-              </p>
-            </div>
-          )}
+          {/* Beta notice */}
+          <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+            <p className="text-sm text-amber-700 dark:text-amber-300">
+              <strong>🚧 Beta versie</strong><br />
+              Deze site is nog in ontwikkeling. Er kunnen dagelijks nieuwe functies worden toegevoegd en verbeteringen doorgevoerd worden.
+            </p>
+          </div>
         </div>
 
         {/* Back to home */}

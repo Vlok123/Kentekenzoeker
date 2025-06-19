@@ -81,10 +81,20 @@ export default function HomePage() {
           </div>
 
           {/* Subtitle */}
-          <p className="text-lg sm:text-xl text-slate-600 dark:text-white/70 max-w-2xl mx-auto mb-12 leading-relaxed">
+          <p className="text-lg sm:text-xl text-slate-600 dark:text-white/70 max-w-2xl mx-auto mb-8 leading-relaxed">
             Ontdek alles over elk Nederlands voertuig met real-time RDW data 
             en een moderne, gebruiksvriendelijke ervaring.
           </p>
+
+          {/* Beta Notice */}
+          <div className="max-w-lg mx-auto mb-12">
+            <div className="glass-card p-4 border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20">
+              <p className="text-sm text-amber-700 dark:text-amber-300 flex items-center justify-center gap-2">
+                <span className="text-lg">🚧</span>
+                <span><strong>Beta versie</strong> - Dagelijks nieuwe functies en verbeteringen</span>
+              </p>
+            </div>
+          </div>
 
           {/* Search Section */}
           <div className="mb-16">
