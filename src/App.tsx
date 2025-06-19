@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAppStore } from '@/store/useAppStore';
 import { ApiAuthService } from '@/lib/api-auth';
 import Layout from '@/components/Layout';
@@ -60,7 +60,7 @@ function App() {
   }, [token, user, setUser, logout, addNotification]);
 
   return (
-    <Router>
+    <>
       <NotificationProvider />
       <Routes>
         {/* Login route without layout */}
@@ -88,7 +88,7 @@ function App() {
           />
         </Route>
       </Routes>
-    </Router>
+    </>
   );
 }
 
