@@ -1,109 +1,94 @@
-import { Routes, Route } from 'react-router-dom';
 import { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { useAppStore } from '@/store/useAppStore';
+import { ApiAuthService } from '@/lib/api-auth';
 import Layout from '@/components/Layout';
+import NotificationProvider from '@/components/NotificationProvider';
+
+// Pages
 import HomePage from '@/pages/HomePage';
+import ZoekPage from '@/pages/ZoekPage';
 import TrekgewichtPage from '@/pages/TrekgewichtPage';
 import VoertuigDetailPage from '@/pages/VoertuigDetailPage';
-import ZoekPage from '@/pages/ZoekPage';
 import LoginPage from '@/pages/LoginPage';
-import AdminPage from '@/pages/AdminPage';
-import MijnOpgeslagenPage from '@/pages/MijnOpgeslagenPage';
 import DashboardPage from '@/pages/DashboardPage';
-import { useAppStore } from '@/store/useAppStore';
-import { ApiAuthService as AuthService } from '@/lib/api-auth';
+import MijnOpgeslagenPage from '@/pages/MijnOpgeslagenPage';
+import AdminPage from '@/pages/AdminPage';
 
-// Protected Route component
-function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
-  const { user, isAuthenticated } = useAppStore();
-
-  if (!isAuthenticated || !user) {
-    return <LoginPage />;
-  }
-
-  if (adminOnly && user.role !== 'admin') {
-    return (
-      <div className="max-w-4xl mx-auto text-center py-12">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-          Toegang geweigerd
-        </h1>
-        <p className="text-slate-600 dark:text-slate-300">
-          Je hebt geen administratorrechten om deze pagina te bekijken.
-        </p>
-      </div>
-    );
-  }
-
-  return <>{children}</>;
+// Layout wrapper that uses Outlet
+function LayoutWrapper() {
+  return (
+    <Layout>
+      <Outlet />
+    </Layout>
+  );
 }
 
 function App() {
-  const { user, token, setUser, setToken } = useAppStore();
+  const { user, token, setUser, logout, addNotification } = useAppStore();
 
+  // Verify token on app load
   useEffect(() => {
-    // Check if user is already logged in
-    if (token && !user) {
-      AuthService.verifyToken(token)
-        .then((verifiedUser) => {
+    const verifyUserToken = async () => {
+      if (token && !user) {
+        try {
+          const verifiedUser = await ApiAuthService.verifyToken(token);
           if (verifiedUser) {
             setUser(verifiedUser);
           } else {
-            setToken(null);
+            // Token is invalid, clear it
+            logout();
+            addNotification({
+              type: 'warning',
+              title: 'Sessie verlopen',
+              message: 'Je sessie is verlopen. Log opnieuw in.'
+            });
           }
-        })
-        .catch(() => {
-          setToken(null);
-        });
-    }
-  }, [token, user, setUser, setToken]);
+        } catch (error) {
+          console.error('Token verification failed:', error);
+          logout();
+          addNotification({
+            type: 'error',
+            title: 'Authenticatie fout',
+            message: 'Er was een probleem met je sessie. Log opnieuw in.'
+          });
+        }
+      }
+    };
+
+    verifyUserToken();
+  }, [token, user, setUser, logout, addNotification]);
 
   return (
-    <Routes>
-      {/* Public routes */}
-      <Route path="/login" element={<LoginPage />} />
-      
-      {/* Routes with layout */}
-      <Route
-        path="/*"
-        element={
-          <Layout>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/trekgewicht" element={<TrekgewichtPage />} />
-              <Route path="/zoek" element={<ZoekPage />} />
-              <Route path="/voertuig/:kenteken" element={<VoertuigDetailPage />} />
-              
-              {/* Protected admin route */}
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedRoute adminOnly>
-                    <AdminPage />
-                  </ProtectedRoute>
-                }
-              />
-              
-              {/* Protected user routes */}
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <DashboardPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/mijn-opgeslagen"
-                element={
-                  <ProtectedRoute>
-                    <MijnOpgeslagenPage />
-                  </ProtectedRoute>
-                }
-              />
-            </Routes>
-          </Layout>
-        }
-      />
-    </Routes>
+    <Router>
+      <NotificationProvider />
+      <Routes>
+        {/* Login route without layout */}
+        <Route path="/login" element={<LoginPage />} />
+        
+        {/* Routes with layout */}
+        <Route path="/" element={<LayoutWrapper />}>
+          <Route index element={<HomePage />} />
+          <Route path="zoek" element={<ZoekPage />} />
+          <Route path="trekgewicht" element={<TrekgewichtPage />} />
+          <Route path="voertuig/:kenteken" element={<VoertuigDetailPage />} />
+          
+          {/* Protected routes */}
+          <Route 
+            path="dashboard" 
+            element={user ? <DashboardPage /> : <Navigate to="/login" replace />} 
+          />
+          <Route 
+            path="mijn-opgeslagen" 
+            element={user ? <MijnOpgeslagenPage /> : <Navigate to="/login" replace />} 
+          />
+          <Route 
+            path="admin" 
+            element={user?.role === 'admin' ? <AdminPage /> : <Navigate to="/login" replace />} 
+          />
+        </Route>
+      </Routes>
+    </Router>
   );
 }
 

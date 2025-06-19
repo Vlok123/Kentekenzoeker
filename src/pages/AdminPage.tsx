@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Users, Search, Car, Database, Settings, Shield, Activity, Clock, MapPin, RefreshCw } from 'lucide-react';
+import { Users, Search, Car, Database, Settings, Shield, Activity, Clock, MapPin, RefreshCw, LogOut } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { ApiAuthService } from '@/lib/api-auth';
+import { useNavigate } from 'react-router-dom';
 
 interface AdminStats {
   totalUsers: number;
@@ -35,7 +36,28 @@ export default function AdminPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'logs' | 'cleanup'>('overview');
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
-  const { user, token, addNotification } = useAppStore();
+  const { user, token, addNotification, logout } = useAppStore();
+  const navigate = useNavigate();
+
+  const handleTokenError = (error: any) => {
+    if (error.message === 'Ongeldig token' || error.message?.includes('token')) {
+      addNotification({
+        type: 'error',
+        title: 'Sessie verlopen',
+        message: 'Je sessie is verlopen. Je wordt automatisch uitgelogd.',
+        duration: 3000
+      });
+      
+      // Auto logout after 2 seconds
+      setTimeout(() => {
+        logout();
+        navigate('/login');
+      }, 2000);
+      
+      return true; // Token error handled
+    }
+    return false; // Not a token error
+  };
 
   const loadAdminData = async (showLoading = true) => {
     if (!token || !user || user.role !== 'admin') {
@@ -53,13 +75,17 @@ export default function AdminPage() {
         title: 'Data geladen',
         message: 'Admin statistieken zijn bijgewerkt.'
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load admin stats:', error);
-      addNotification({
-        type: 'error',
-        title: 'Fout bij laden',
-        message: 'Kon admin statistieken niet laden.'
-      });
+      
+      // Check if it's a token error
+      if (!handleTokenError(error)) {
+        addNotification({
+          type: 'error',
+          title: 'Fout bij laden',
+          message: 'Kon admin statistieken niet laden. Probeer opnieuw in te loggen.'
+        });
+      }
     } finally {
       if (showLoading) setIsLoading(false);
     }
@@ -74,6 +100,16 @@ export default function AdminPage() {
     setIsRefreshing(false);
   };
 
+  const handleManualLogout = () => {
+    addNotification({
+      type: 'info',
+      title: 'Uitgelogd',
+      message: 'Je bent succesvol uitgelogd.'
+    });
+    logout();
+    navigate('/login');
+  };
+
   useEffect(() => {
     loadAdminData();
   }, [token, user, addNotification]);
@@ -86,13 +122,17 @@ export default function AdminPage() {
       const result = await ApiAuthService.getAdminLogs(token, page);
       setLogs(result.logs);
       setPagination(result.pagination);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load admin logs:', error);
-      addNotification({
-        type: 'error',
-        title: 'Fout bij laden',
-        message: 'Kon activiteiten logs niet laden.'
-      });
+      
+      // Check if it's a token error
+      if (!handleTokenError(error)) {
+        addNotification({
+          type: 'error',
+          title: 'Fout bij laden',
+          message: 'Kon activiteiten logs niet laden.'
+        });
+      }
     } finally {
       if (showLoading) setIsLoadingLogs(false);
     }
@@ -119,11 +159,14 @@ export default function AdminPage() {
       // Refresh stats after cleanup
       await loadAdminData(false);
     } catch (error: any) {
-      addNotification({
-        type: 'error',
-        title: 'Opschoning mislukt',
-        message: error.message || 'Er is iets misgegaan bij het opschonen.'
-      });
+      // Check if it's a token error
+      if (!handleTokenError(error)) {
+        addNotification({
+          type: 'error',
+          title: 'Opschoning mislukt',
+          message: error.message || 'Er is iets misgegaan bij het opschonen.'
+        });
+      }
     }
   };
 
@@ -148,9 +191,15 @@ export default function AdminPage() {
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
           Toegang geweigerd
         </h1>
-        <p className="text-slate-600 dark:text-slate-300">
+        <p className="text-slate-600 dark:text-slate-300 mb-6">
           Je hebt geen administratorrechten om deze pagina te bekijken.
         </p>
+        <button
+          onClick={() => navigate('/login')}
+          className="btn btn-primary"
+        >
+          Naar Login
+        </button>
       </div>
     );
   }
@@ -183,9 +232,12 @@ export default function AdminPage() {
         <p className="mt-2 text-lg text-slate-600 dark:text-slate-300">
           Beheer gebruikers, bekijk logs en onderhoud de database
         </p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Ingelogd als: {user.email} ({user.role})
+        </p>
         
-        {/* Global Refresh Button */}
-        <div className="mt-4">
+        {/* Action Buttons */}
+        <div className="mt-4 flex justify-center space-x-4">
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
@@ -194,6 +246,24 @@ export default function AdminPage() {
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             <span>{isRefreshing ? 'Verversen...' : 'Alles Verversen'}</span>
           </button>
+          
+          <button
+            onClick={handleManualLogout}
+            className="btn btn-danger inline-flex items-center space-x-2"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Uitloggen</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Token Warning */}
+      <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800 p-4">
+        <div className="flex items-center space-x-2">
+          <Clock className="w-5 h-5 text-yellow-600" />
+          <p className="text-yellow-800 dark:text-yellow-200 text-sm">
+            <strong>Let op:</strong> Je sessie verloopt automatisch na 7 dagen. Bij een "Ongeldig token" fout word je automatisch uitgelogd.
+          </p>
         </div>
       </div>
 

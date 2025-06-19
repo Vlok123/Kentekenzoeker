@@ -3,7 +3,6 @@ import { Car, Menu, X, User, LogOut, Home, Search, Zap, BookOpen, Shield, Sun, M
 import { useState, useEffect } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { useDarkMode } from '@/hooks/useDarkMode';
-import NotificationProvider from './NotificationProvider';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -51,8 +50,6 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen gradient-bg">
-      <NotificationProvider />
-      
       {/* Header - Fixed with proper z-index hierarchy */}
       <header 
         className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ${
