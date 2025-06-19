@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Zap, Car, ArrowRight, ChevronDown, TrendingUp, Shield, Clock, Database } from 'lucide-react';
+import { Search, Zap, Car, ArrowRight, ChevronDown } from 'lucide-react';
 import { normalizeLicensePlate } from '@/utils/licensePlate';
 
 export default function HomePage() {
@@ -192,32 +192,25 @@ export default function HomePage() {
       </div>
 
       {/* Stats Section */}
-      <div className="relative py-16 px-4 sm:px-6 lg:px-8 z-20">
-        <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            {[
-              { number: "15M+", label: "Voertuigen", icon: Database },
-              { number: "100%", label: "RDW Data", icon: Shield },
-              { number: "24/7", label: "Beschikbaar", icon: Clock },
-              { number: "0.1s", label: "Zoektijd", icon: TrendingUp }
-            ].map((stat, index) => {
-              const Icon = stat.icon;
-              return (
-                <div key={index} className="group">
-                  <div className="flex justify-center mb-4">
-                    <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-3 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-                      <Icon className="h-6 w-6 text-white" />
-                    </div>
-                  </div>
-                  <div className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-700 to-blue-600 dark:from-white dark:to-blue-200 mb-2">
-                    {stat.number}
-                  </div>
-                  <div className="text-slate-600 dark:text-white/70 font-medium">
-                    {stat.label}
-                  </div>
-                </div>
-              );
-            })}
+      <div className="relative py-12 px-4 sm:px-6 lg:px-8 z-20">
+        <div className="max-w-3xl mx-auto">
+          <div className="glass-card p-6 sm:p-8">
+            <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12 text-center">
+              <div className="flex items-center space-x-2">
+                <span className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">15M+</span>
+                <span className="text-slate-600 dark:text-slate-300 font-medium">Voertuigen</span>
+              </div>
+              <div className="hidden sm:block w-px h-8 bg-slate-300 dark:bg-slate-600"></div>
+              <div className="flex items-center space-x-2">
+                <span className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">100%</span>
+                <span className="text-slate-600 dark:text-slate-300 font-medium">RDW Data</span>
+              </div>
+              <div className="hidden sm:block w-px h-8 bg-slate-300 dark:bg-slate-600"></div>
+              <div className="flex items-center space-x-2">
+                <span className="text-2xl sm:text-3xl font-bold text-purple-600 dark:text-purple-400">24/7</span>
+                <span className="text-slate-600 dark:text-slate-300 font-medium">Beschikbaar</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

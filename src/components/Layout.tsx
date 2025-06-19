@@ -55,7 +55,7 @@ export default function Layout({ children }: LayoutProps) {
       
       {/* Header */}
       <header 
-        className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ${
+        className={`fixed top-0 left-0 right-0 z-[9999] transition-all duration-300 ${
           scrollY > 50 || !isHomePage
             ? 'glass-card border-b border-slate-200/50 dark:border-slate-700/50' 
             : 'bg-transparent'
@@ -127,7 +127,7 @@ export default function Layout({ children }: LayoutProps) {
                   </button>
 
                   {isUserMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-56 glass-card shadow-2xl py-2 z-[110]">
+                    <div className="absolute right-0 mt-2 w-56 glass-card shadow-2xl py-2 z-[10000]">
                       <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
                         <p className="text-sm font-medium text-slate-900 dark:text-white">{user.name}</p>
                         <p className="text-xs text-slate-600 dark:text-slate-400">{user.email}</p>
@@ -185,7 +185,7 @@ export default function Layout({ children }: LayoutProps) {
 
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <div className="md:hidden glass-card border-t border-slate-200 dark:border-slate-700 z-[105]">
+          <div className="md:hidden glass-card border-t border-slate-200 dark:border-slate-700 z-[10000]">
             <div className="px-4 py-4 space-y-2">
               {navigation.map((item) => {
                 const Icon = item.icon;
@@ -244,7 +244,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* Click outside handler for user menu */}
       {isUserMenuOpen && (
         <div
-          className="fixed inset-0 z-[90]"
+          className="fixed inset-0 z-[9998]"
           onClick={() => setIsUserMenuOpen(false)}
         />
       )}
