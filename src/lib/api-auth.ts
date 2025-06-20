@@ -7,7 +7,18 @@ const API_BASE_URL = process.env.NODE_ENV === 'production'
 
 // Helper function for authenticated requests
 export async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  const token = localStorage.getItem('rdw-auth-token');
+  // Get token from zustand store in localStorage
+  let token: string | null = null;
+  
+  try {
+    const storedData = localStorage.getItem('rdw-app-storage');
+    if (storedData) {
+      const parsedData = JSON.parse(storedData);
+      token = parsedData.state?.token || null;
+    }
+  } catch (error) {
+    console.error('Error parsing stored auth data:', error);
+  }
   
   if (!token) {
     throw new Error('Geen autorisatie token');
