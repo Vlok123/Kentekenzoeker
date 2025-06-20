@@ -160,29 +160,23 @@ export default function AdminPage() {
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
       
-      // Temporarily disable auto-logout to debug the issue
-      // TODO: Re-enable once token issue is resolved
-      // if (error.message?.includes('token') || error.message?.includes('Token') || 
-      //     error.message?.includes('Ongeldig') || error.message?.includes('401')) {
-      //   console.log('Token error detected - forcing logout');
-      //   
-      //   addNotification({
-      //     type: 'warning',
-      //     title: 'Sessie verlopen',
-      //     message: 'Je wordt automatisch uitgelogd vanwege een ongeldige token. Log opnieuw in.',
-      //     duration: 8000
-      //   });
-      //   
-      //   // Use the force logout function to clear everything
-      //   forceLogout();
-      //   
-      //   // Force a complete page reload to clear any cached state
-      //   setTimeout(() => {
-      //     window.location.href = '/login';
-      //   }, 1500);
-      //   
-      //   return;
-      // }
+      // Auto-logout on token errors - re-enabled for JWT secret fix
+      if (error.message?.includes('token') || error.message?.includes('Token') || 
+          error.message?.includes('Ongeldig') || error.message?.includes('401')) {
+        console.log('Token error detected - forcing logout');
+        
+        addNotification({
+          type: 'warning',
+          title: 'JWT Secret Gewijzigd',
+          message: 'De JWT secret is bijgewerkt. Je moet opnieuw inloggen met een nieuwe token.',
+          duration: 8000
+        });
+        
+        // Use the force logout function to clear everything
+        forceLogoutAndClear();
+        
+        return;
+      }
       
       setError(error.message || 'Onbekende fout bij laden van admin data');
       

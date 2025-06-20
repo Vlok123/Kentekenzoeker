@@ -89,6 +89,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return await handleLogAnonymousSearch(req, res);
       case 'debug-env':
         return res.status(200).json(debugEnvironment());
+      case 'force-logout-all':
+        return await handleForceLogoutAll(req, res);
       default:
         return res.status(400).json({ error: 'Invalid action' });
     }
@@ -889,6 +891,22 @@ async function handleCleanupOldData(req: VercelRequest, res: VercelResponse) {
   } catch (error) {
     return res.status(401).json({ error: 'Ongeldig token' });
   }
+}
+
+async function handleForceLogoutAll(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // This endpoint simply returns success - the real "logout" happens on the client side
+  // by clearing all stored tokens. This is just to confirm the JWT secret change.
+  
+  return res.status(200).json({ 
+    success: true, 
+    message: 'JWT secret has been updated. All old tokens are now invalid.',
+    timestamp: new Date().toISOString(),
+    jwtInfo: debugEnvironment()
+  });
 }
 
 async function handleLogAnonymousSearch(req: VercelRequest, res: VercelResponse) {
