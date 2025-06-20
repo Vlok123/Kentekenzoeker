@@ -466,7 +466,18 @@ export function useVehicleSearch(query: string, filters: SearchFilters, enabled 
 
       const response = await rdwApi.get<RdwVehicle[]>(VEHICLES_ENDPOINT, { params });
 
-      let vehicles = response.data.map(rdwVehicle => processVehicleData(rdwVehicle));
+      // Process vehicles with fuel data for consistent brandstof information
+      let vehicles = await Promise.all(
+        response.data.map(async (rdwVehicle) => {
+          // Fetch fuel data for each vehicle to ensure consistent brandstof information
+          const fuelData = await safeRdwApiCall<RdwBrandstofData>(BRANDSTOF_ENDPOINT, {
+            kenteken: rdwVehicle.kenteken,
+            $limit: 10,
+          });
+          
+          return processVehicleData(rdwVehicle, fuelData);
+        })
+      );
 
       // Apply client-side wildcard filtering if needed (fallback for cases where LIKE didn't work perfectly)
       if (query && query.includes('*')) {

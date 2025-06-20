@@ -6,7 +6,8 @@ import type { RdwVehicle, ProcessedVehicle, Milieuzone, Province } from '@/types
  * Converteert RDW API data naar UI-vriendelijke data
  */
 export function processVehicleData(rdwData: RdwVehicle, fuelData?: any[]): ProcessedVehicle {
-  const apkDate = parseRdwDate(rdwData.apk_geldig_tot);
+  // APK datum kan in verschillende velden staan - probeer beide
+  const apkDate = parseRdwDate(rdwData.vervaldatum_apk) || parseRdwDate(rdwData.apk_geldig_tot);
   const datumEersteToelating = parseRdwDate(rdwData.datum_eerste_toelating);
   const today = new Date();
   // const twoMonthsFromNow = addMonths(today, 2);
