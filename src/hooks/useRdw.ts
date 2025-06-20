@@ -834,7 +834,7 @@ export function useVehicleRecalls(kenteken: string, enabled = true) {
  * Hook voor trekgewicht controle
  */
 export function useTrekgewichtCheck() {
-  const { addNotification, user, token } = useAppStore();
+  const { addNotification, user } = useAppStore();
   const queryClient = useQueryClient();
 
   return useMutation({

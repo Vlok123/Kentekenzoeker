@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, FileText, HardDrive, RefreshCw, AlertCircle, LogOut, Info, Search, Eye, Clock, TrendingUp, BarChart3, Activity, Globe, Database } from 'lucide-react';
+import { Users, FileText, HardDrive, RefreshCw, AlertCircle, LogOut, Info, Search, Eye, Clock, TrendingUp, BarChart3, Activity, Globe } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { ApiAuthService } from '@/lib/api-auth';
 
