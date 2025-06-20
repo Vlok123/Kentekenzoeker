@@ -14,6 +14,13 @@ export default function AdminPage() {
   const { user, token, addNotification, logout } = useAppStore();
   const navigate = useNavigate();
 
+  const clearStorageAndReload = () => {
+    console.log('Clearing all storage...');
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.reload();
+  };
+
   const testConnection = async () => {
     if (!token || !user || user.role !== 'admin') {
       setError('Geen admin rechten of niet ingelogd');
@@ -25,10 +32,25 @@ export default function AdminPage() {
     setError(null);
 
     try {
-      console.log('Testing admin connection...');
+      console.log('=== TOKEN DEBUG INFO ===');
       console.log('Token exists:', !!token);
       console.log('Token length:', token?.length);
       console.log('User role:', user?.role);
+      console.log('User email:', user?.email);
+      console.log('Token preview:', token?.substring(0, 50) + '...');
+      
+      // Try to decode token locally (just for debug)
+      try {
+        const tokenParts = token.split('.');
+        if (tokenParts.length === 3) {
+          const payload = JSON.parse(atob(tokenParts[1]));
+          console.log('Token payload:', payload);
+          console.log('Token expires:', new Date(payload.exp * 1000));
+          console.log('Token is expired:', payload.exp < Date.now() / 1000);
+        }
+      } catch (e) {
+        console.log('Could not decode token:', e);
+      }
 
       // Simple fetch test
       const response = await fetch('/api/auth?action=admin-stats', {
@@ -131,6 +153,13 @@ export default function AdminPage() {
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Test Verbinding
+          </button>
+          <button
+            onClick={clearStorageAndReload}
+            className="btn btn-secondary"
+          >
+            <AlertCircle className="w-4 h-4 mr-2" />
+            Wis Storage
           </button>
           <button
             onClick={handleLogout}
