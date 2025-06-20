@@ -10,7 +10,12 @@ const pool = new Pool({
   }
 });
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || '769dd9656f5f21ea9e79eae8cc0e4a557e747e102ab5db150bca0bdc38a431cbbaae1d6868fff498c50e518af0c5866e3aa4efac037e66828a7695affd91c514';
+
+// Ensure we have a proper JWT secret
+if (!process.env.JWT_SECRET) {
+  console.warn('⚠️  JWT_SECRET environment variable not set! Using default secret.');
+}
 
 // Debug function to check environment
 function debugEnvironment() {
@@ -18,8 +23,10 @@ function debugEnvironment() {
     hasJwtSecret: !!JWT_SECRET,
     jwtSecretLength: JWT_SECRET?.length || 0,
     jwtSecretPreview: JWT_SECRET?.substring(0, 10) + '...',
+    jwtSecretFromEnv: !!process.env.JWT_SECRET,
     nodeEnv: process.env.NODE_ENV,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    isUsingDefaultSecret: JWT_SECRET === '769dd9656f5f21ea9e79eae8cc0e4a557e747e102ab5db150bca0bdc38a431cbbaae1d6868fff498c50e518af0c5866e3aa4efac037e66828a7695affd91c514'
   };
 }
 const JWT_EXPIRES_IN = '7d';
