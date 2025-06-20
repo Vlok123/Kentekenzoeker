@@ -52,6 +52,7 @@ export interface RdwVehicle {
   techn_max_trekgewicht_geremd: string;
   taxi_indicator: string;
   vervaldatum_apk: string;
+  vervaldatum_apk_dt: string;
   openstaande_terugroepactie_indicator: string;
   vermogen_brom_snorfiets: string;
   typegoedkeuring_nummer: string;

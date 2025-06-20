@@ -30,7 +30,7 @@ export default function VoertuigDetailPage() {
   
   const { data: vehicle, isLoading, error } = useCompleteVehicleData(kenteken || '', !!kenteken);
   const { data: recalls = [] } = useVehicleRecalls(kenteken || '', !!kenteken);
-  const { data: completeRdwData, isLoading: isLoadingComplete } = useCompleteRdwData(kenteken || '', !!kenteken);
+
 
   if (!kenteken) {
     return (
@@ -456,51 +456,7 @@ export default function VoertuigDetailPage() {
             </div>
           )}
 
-          {/* Complete RDW Data Summary */}
-          {completeRdwData && !isLoadingComplete && (
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-200 dark:border-blue-800 p-6">
-              <div className="flex items-center mb-4">
-                <FileText className="w-5 h-5 text-blue-600 mr-3" />
-                <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-                  Complete RDW Informatie
-                </h2>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <label className="text-slate-600 dark:text-slate-400">APK Vervaldatum:</label>
-                  <p className="font-medium text-slate-900 dark:text-white">
-                    {completeRdwData.apkVervaldatum || 'Onbekend'}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-slate-600 dark:text-slate-400">Brandstof Details:</label>
-                  <p className="font-medium text-slate-900 dark:text-white">
-                    {completeRdwData.brandstofDetails || completeRdwData.brandstof}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-slate-600 dark:text-slate-400">Verbruik Gecombineerd:</label>
-                  <p className="font-medium text-slate-900 dark:text-white">
-                    {completeRdwData.verbruikGecombineerd || 'Niet beschikbaar'}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-slate-600 dark:text-slate-400">Carrosserie:</label>
-                  <p className="font-medium text-slate-900 dark:text-white">
-                    {completeRdwData.carrosserieOmschrijving || 'Niet beschikbaar'}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-slate-600 dark:text-slate-400">Laatste Update:</label>
-                  <p className="font-medium text-slate-900 dark:text-white">
-                    {new Date(completeRdwData.laatsteUpdate).toLocaleString('nl-NL')}
-                  </p>
-                </div>
-              </div>
 
-            </div>
-          )}
 
           {/* APK History */}
           {vehicle.apkHistorie && vehicle.apkHistorie.length > 0 && (

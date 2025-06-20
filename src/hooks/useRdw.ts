@@ -466,14 +466,22 @@ export function useVehicleSearch(query: string, filters: SearchFilters, enabled 
 
       const response = await rdwApi.get<RdwVehicle[]>(VEHICLES_ENDPOINT, { params });
 
-      // Process vehicles with fuel data for consistent brandstof information
+      // Process vehicles - only fetch fuel data for first few results to avoid rate limiting
+      const maxFuelRequests = 20; // Limit parallel fuel requests
       let vehicles = await Promise.all(
-        response.data.map(async (rdwVehicle) => {
-          // Fetch fuel data for each vehicle to ensure consistent brandstof information
-          const fuelData = await safeRdwApiCall<RdwBrandstofData>(BRANDSTOF_ENDPOINT, {
-            kenteken: rdwVehicle.kenteken,
-            $limit: 10,
-          });
+        response.data.map(async (rdwVehicle, index) => {
+          // Only fetch fuel data for first few results to improve performance
+          let fuelData: RdwBrandstofData[] = [];
+          if (index < maxFuelRequests) {
+            try {
+              fuelData = await safeRdwApiCall<RdwBrandstofData>(BRANDSTOF_ENDPOINT, {
+                kenteken: rdwVehicle.kenteken,
+                $limit: 5,
+              });
+            } catch (error) {
+              console.warn(`Failed to fetch fuel data for ${rdwVehicle.kenteken}:`, error);
+            }
+          }
           
           return processVehicleData(rdwVehicle, fuelData);
         })

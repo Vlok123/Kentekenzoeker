@@ -6,8 +6,24 @@ import type { RdwVehicle, ProcessedVehicle, Milieuzone, Province } from '@/types
  * Converteert RDW API data naar UI-vriendelijke data
  */
 export function processVehicleData(rdwData: RdwVehicle, fuelData?: any[]): ProcessedVehicle {
-  // APK datum kan in verschillende velden staan - probeer beide
-  const apkDate = parseRdwDate(rdwData.vervaldatum_apk) || parseRdwDate(rdwData.apk_geldig_tot);
+  // APK datum kan in verschillende velden staan - probeer alle opties
+  let apkDate: Date | null = null;
+  
+  // Probeer eerst de datetime versie (meest betrouwbaar)
+  if (rdwData.vervaldatum_apk_dt) {
+    try {
+      apkDate = parseISO(rdwData.vervaldatum_apk_dt);
+      if (!isValid(apkDate)) apkDate = null;
+    } catch {
+      apkDate = null;
+    }
+  }
+  
+  // Fallback naar de string versies
+  if (!apkDate) {
+    apkDate = parseRdwDate(rdwData.vervaldatum_apk) || parseRdwDate(rdwData.apk_geldig_tot);
+  }
+  
   const datumEersteToelating = parseRdwDate(rdwData.datum_eerste_toelating);
   const today = new Date();
   // const twoMonthsFromNow = addMonths(today, 2);
