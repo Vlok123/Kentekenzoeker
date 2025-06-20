@@ -45,7 +45,7 @@ const BRANDSTOF_ENDPOINT = `${RDW_BASE_URL}/8ys7-d773.json`; // Fuel/emissions d
 const APK_ENDPOINT = `${RDW_BASE_URL}/w4rt-e856.json`; // APK keuringen (working endpoint)
 const APK_EXPIRY_ENDPOINT = `${RDW_BASE_URL}/vezc-m2t6.json`; // APK expiry (same as carrosserie)
 const APK_HISTORY_ENDPOINT = `${RDW_BASE_URL}/w4rt-e856.json`; // APK keuringen (working endpoint)
-const APK_KEURINGEN_ENDPOINT = `${RDW_BASE_URL}/vkij-7mwc.json`; // APK Keuringen dataset
+const APK_KEURINGEN_ENDPOINT = `${RDW_BASE_URL}/sgfe-77wx.json`; // Meldingen Keuringsinstantie (APK historie)
 
 // Additional data endpoints
 const EMISSIONS_ENDPOINT = `${RDW_BASE_URL}/8ys7-d773.json`; // Same as brandstof
@@ -138,16 +138,14 @@ export async function getApkHistorie(kenteken: string): Promise<ApkHistorieNieuw
 
     // Verwerk de data
     const processedData: ApkHistorieNieuw[] = data.map(keuring => {
-      // Verwerk gebreken (als string met komma's gescheiden)
-      let gebreken: string[] = [];
-      if (keuring.gebreken && typeof keuring.gebreken === 'string') {
-        gebreken = keuring.gebreken.split(',').map(g => g.trim()).filter(g => g.length > 0);
-      }
+      // Voor gebreken zouden we de API endpoints kunnen aanroepen, maar voor nu laten we het leeg
+      // omdat dit extra API calls zou vereisen per keuring
+      const gebreken: string[] = [];
 
       return {
-        datum_melding: formatDateToDDMMYYYY(keuring.datum_melding),
+        datum_melding: formatDateToDDMMYYYY(keuring.meld_datum_door_keuringsinstantie),
         vervaldatum_keuring: formatDateToDDMMYYYY(keuring.vervaldatum_keuring),
-        keuringsinstantie_naam: keuring.keuringsinstantie_naam || 'Onbekend',
+        keuringsinstantie_naam: keuring.soort_erkenning_omschrijving || 'Onbekend',
         gebreken: gebreken
       };
     });

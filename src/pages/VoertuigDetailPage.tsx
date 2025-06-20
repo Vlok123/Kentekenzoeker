@@ -20,7 +20,7 @@ import {
   DollarSign,
   History
 } from 'lucide-react';
-import { useCompleteVehicleData, useVehicleRecalls } from '@/hooks/useRdw';
+import { useCompleteVehicleData, useVehicleRecalls, useApkHistorie } from '@/hooks/useRdw';
 import { formatDate } from '@/utils/dataProcessing';
 import { useAppStore } from '@/store/useAppStore';
 
@@ -30,6 +30,7 @@ export default function VoertuigDetailPage() {
   
   const { data: vehicle, isLoading, error } = useCompleteVehicleData(kenteken || '', !!kenteken);
   const { data: recalls = [] } = useVehicleRecalls(kenteken || '', !!kenteken);
+  const { data: apkHistorie = [] } = useApkHistorie(kenteken || '', !!kenteken);
 
 
   if (!kenteken) {
@@ -459,7 +460,7 @@ export default function VoertuigDetailPage() {
 
 
           {/* APK History */}
-          {vehicle.apkHistorie && vehicle.apkHistorie.length > 0 && (
+          {apkHistorie && apkHistorie.length > 0 && (
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
               <div className="flex items-center mb-4">
                 <History className="w-5 h-5 text-slate-600 dark:text-slate-400 mr-3" />
@@ -469,34 +470,26 @@ export default function VoertuigDetailPage() {
               </div>
               
               <div className="space-y-3">
-                {vehicle.apkHistorie.slice(0, 5).map((apk, index) => (
+                {apkHistorie.slice(0, 10).map((apk, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
                     <div className="flex items-center space-x-3">
-                      <div className={`w-3 h-3 rounded-full ${
-                        apk.uitslag === 'Goedgekeurd' ? 'bg-green-500' :
-                        apk.uitslag === 'Afgekeurd' ? 'bg-red-500' :
-                        'bg-yellow-500'
-                      }`} />
+                      <div className="w-3 h-3 rounded-full bg-green-500" />
                       <div>
                         <p className="font-medium text-slate-900 dark:text-white">
-                          {formatDate(apk.datum)}
+                          Keuring: {apk.datum_melding}
                         </p>
                         <p className="text-sm text-slate-600 dark:text-slate-400">
-                          {apk.keuringsinstantie}, {apk.plaats}
+                          {apk.keuringsinstantie_naam}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className={`font-medium ${
-                        apk.uitslag === 'Goedgekeurd' ? 'text-green-600' :
-                        apk.uitslag === 'Afgekeurd' ? 'text-red-600' :
-                        'text-yellow-600'
-                      }`}>
-                        {apk.uitslag}
+                      <p className="font-medium text-green-600">
+                        Geldig tot: {apk.vervaldatum_keuring}
                       </p>
-                      {(apk.gebrekLicht + apk.gebrekZwaar + apk.gebrekKritiek) > 0 && (
+                      {apk.gebreken.length > 0 && (
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {apk.gebrekLicht + apk.gebrekZwaar + apk.gebrekKritiek} gebrek(en)
+                          {apk.gebreken.length} gebrek(en)
                         </p>
                       )}
                     </div>

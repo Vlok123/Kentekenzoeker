@@ -283,14 +283,19 @@ export interface RdwRoadTaxData {
   bpm_code_omschrijving: string;
 }
 
-// APK Keuringen (vkij-7mwc.json) - Nieuwe APK historie endpoint
+// APK Keuringen (sgfe-77wx.json) - Meldingen Keuringsinstantie endpoint
 export interface RdwApkKeuring {
   kenteken: string;
-  datum_melding: string;
+  meld_datum_door_keuringsinstantie: string;
+  meld_datum_door_keuringsinstantie_dt: string;
+  meld_tijd_door_keuringsinstantie: string;
   vervaldatum_keuring: string;
-  keuringsinstantie_naam: string;
-  keuringsinstantie_locatie?: string;
-  gebreken?: string;
+  vervaldatum_keuring_dt: string;
+  soort_erkenning_keuringsinstantie: string;
+  soort_erkenning_omschrijving: string;
+  soort_melding_ki_omschrijving: string;
+  api_gebrek_constateringen: string;
+  api_gebrek_beschrijving: string;
   // Andere velden die mogelijk beschikbaar zijn
   [key: string]: any;
 }
