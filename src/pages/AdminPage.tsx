@@ -110,6 +110,8 @@ export default function AdminPage() {
       console.log('Attempting to fetch admin stats...');
       const adminStats = await ApiAuthService.getAdminStats(token);
       console.log('Admin stats loaded successfully:', adminStats);
+      console.log('Total search count:', adminStats.totalSearchCount);
+      console.log('Searches by user:', adminStats.searchesByUser);
       
       setStats(adminStats);
       addNotification({
@@ -260,6 +262,14 @@ export default function AdminPage() {
                 <li>Status: {debugInfo.tokenStatus || 'Nog niet gecontroleerd'}</li>
                 <li>Verloopt: {debugInfo.expiresAt || 'Onbekend'}</li>
                 <li>Verificatie: {debugInfo.verificationStatus || 'Nog niet gedaan'}</li>
+              </ul>
+            </div>
+            <div className="md:col-span-2 border-t border-slate-200 dark:border-slate-700 pt-4">
+              <h3 className="font-semibold mb-2">Zoek Statistieken Debug</h3>
+              <ul className="space-y-1 text-slate-600 dark:text-slate-400 text-sm">
+                <li>Totaal zoekopdrachten: {stats.totalSearchCount}</li>
+                <li>Gebruikers met zoekopdrachten: {stats.searchesByUser?.length || 0}</li>
+                <li>Top zoeker: {stats.searchesByUser?.[0]?.email || 'Geen data'} ({stats.searchesByUser?.[0]?.search_count || 0} zoekopdrachten)</li>
               </ul>
             </div>
             {debugInfo.lastError && (
