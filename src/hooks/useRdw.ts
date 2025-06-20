@@ -3,6 +3,7 @@ import axios from 'axios';
 import { processVehicleData } from '@/utils/dataProcessing';
 import { normalizeLicensePlate, matchesWildcard } from '@/utils/licensePlate';
 import { useAppStore } from '@/store/useAppStore';
+import { ApiAuthService } from '@/lib/api-auth';
 import type { 
   RdwVehicle, 
   RdwRecall, 
@@ -342,7 +343,7 @@ export function useVehicleByLicensePlate(kenteken: string, enabled = true) {
  * Hook voor het zoeken van voertuigen met wildcards en filters
  */
 export function useVehicleSearch(query: string, filters: SearchFilters, enabled = true) {
-  const { addNotification } = useAppStore();
+  const { addNotification, token } = useAppStore();
 
   return useQuery({
     queryKey: ['vehicleSearch', query, filters],
@@ -489,6 +490,18 @@ export function useVehicleSearch(query: string, filters: SearchFilters, enabled 
     enabled: enabled && (!!query || Object.keys(filters).some(key => filters[key as keyof SearchFilters])),
     staleTime: 1000 * 60 * 5, // 5 minutes
     cacheTime: 1000 * 60 * 30, // 30 minutes
+    onSuccess: async (vehicles: ProcessedVehicle[]) => {
+      // Log search activity if user is authenticated
+      if (token && (query || Object.keys(filters).length > 0)) {
+        try {
+          console.log('Logging search activity:', { query, filters, resultCount: vehicles.length });
+          await ApiAuthService.logSearch(token, query || '', filters, vehicles.length);
+        } catch (error) {
+          console.warn('Failed to log search activity:', error);
+          // Don't show error to user - search logging is not critical
+        }
+      }
+    },
     onError: (error: Error) => {
       addNotification({
         type: 'error',
