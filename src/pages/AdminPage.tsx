@@ -21,6 +21,15 @@ export default function AdminPage() {
     window.location.reload();
   };
 
+  const forceCompleteLogout = () => {
+    console.log('Force logout using store function...');
+    const { forceLogout } = useAppStore.getState();
+    forceLogout();
+    setTimeout(() => {
+      window.location.href = '/login';
+    }, 100);
+  };
+
   const testConnection = async () => {
     if (!token || !user || user.role !== 'admin') {
       setError('Geen admin rechten of niet ingelogd');
@@ -47,10 +56,20 @@ export default function AdminPage() {
           console.log('Token payload:', payload);
           console.log('Token expires:', new Date(payload.exp * 1000));
           console.log('Token is expired:', payload.exp < Date.now() / 1000);
+          console.log('Token issued at:', new Date(payload.iat * 1000));
+          console.log('Token age (minutes):', (Date.now() / 1000 - payload.iat) / 60);
         }
       } catch (e) {
         console.log('Could not decode token:', e);
       }
+      
+      console.log('=== STORAGE CHECK ===');
+      console.log('localStorage items:', Object.keys(localStorage));
+      console.log('sessionStorage items:', Object.keys(sessionStorage));
+      
+      // Check if this is really a fresh token
+      const tokenAge = Date.now() - (new Date().getTime());
+      console.log('Current time:', new Date().toISOString());
 
       // Simple fetch test
       const response = await fetch('/api/auth?action=admin-stats', {
@@ -160,6 +179,13 @@ export default function AdminPage() {
           >
             <AlertCircle className="w-4 h-4 mr-2" />
             Wis Storage
+          </button>
+          <button
+            onClick={forceCompleteLogout}
+            className="btn btn-secondary"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Force Logout
           </button>
           <button
             onClick={handleLogout}
