@@ -157,37 +157,37 @@ export const useAppStore = create<AppState>()(
       isAuthenticated: false,
       setUser: (user) => set({ user, isAuthenticated: !!user }),
       setToken: (token) => set({ token }),
-        logout: () => set({ 
-    user: null, 
-    token: null, 
-    isAuthenticated: false,
-    savedSearches: [],
-    savedVehicles: []
-  }),
-  
-  // Force logout and clear all stored data
-  forceLogout: () => {
-    // Clear all state
-    set({ 
-      user: null, 
-      token: null, 
-      isAuthenticated: false,
-      savedSearches: [],
-      savedVehicles: [],
-      recentSearches: [],
-      favorites: [],
-      vehicleCache: {},
-      notifications: []
-    });
-    
-    // Clear all storage
-    if (typeof localStorage !== 'undefined') {
-      localStorage.clear();
-    }
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.clear();
-    }
-  },
+      logout: () => set({ 
+        user: null, 
+        token: null, 
+        isAuthenticated: false,
+        savedSearches: [],
+        savedVehicles: []
+      }),
+      
+      // Force logout and clear all stored data
+      forceLogout: () => {
+        // Clear all state
+        set({ 
+          user: null, 
+          token: null, 
+          isAuthenticated: false,
+          savedSearches: [],
+          savedVehicles: [],
+          recentSearches: [],
+          favorites: [],
+          vehicleCache: {},
+          notifications: []
+        });
+        
+        // Clear all storage
+        if (typeof localStorage !== 'undefined') {
+          localStorage.clear();
+        }
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.clear();
+        }
+      },
 
       // Saved data
       savedSearches: [],
