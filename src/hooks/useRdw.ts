@@ -59,14 +59,44 @@ const rdwApi = axios.create({
   },
 });
 
+// Add response interceptor to suppress expected 404 errors from console
+rdwApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Suppress console errors for expected 404s from RDW API
+    if (error.response?.status === 404 || 
+        error.response?.status === 400 ||
+        error.code === 'ERR_BAD_REQUEST') {
+      // Create a custom error object without logging to console
+      const suppressedError = {
+        ...error,
+        response: error.response,
+        code: error.code,
+        message: error.message,
+        config: error.config,
+        isAxiosError: true,
+        suppressedRdwError: true
+      };
+      return Promise.reject(suppressedError);
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Helper function to make RDW API calls with graceful 404 handling
 async function safeRdwApiCall<T>(endpoint: string, params: any): Promise<T[]> {
   try {
     const response = await rdwApi.get<T[]>(endpoint, { params });
     return response.data || [];
   } catch (error: any) {
-    // Silently handle 404 errors - data not available for this vehicle
-    if (error.response?.status === 404 || error.code === 'ERR_BAD_REQUEST') {
+    // Silently handle 404 errors and other common errors - data not available for this vehicle
+    if (error.response?.status === 404 || 
+        error.response?.status === 400 ||
+        error.code === 'ERR_BAD_REQUEST' ||
+        error.code === 'ENOTFOUND' ||
+        error.message?.includes('404') ||
+        error.message?.includes('Not Found')) {
+      // Completely suppress these errors - they're expected for vehicles without certain data
       return [];
     }
     throw error;
