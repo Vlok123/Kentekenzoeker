@@ -81,14 +81,25 @@ export default function AdminPage() {
 
       console.log('Response status:', response.status);
       console.log('Response ok:', response.ok);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+      const responseText = await response.text();
+      console.log('Raw response:', responseText.substring(0, 200) + '...');
 
       if (!response.ok) {
-        const errorData = await response.text();
-        console.log('Error response:', errorData);
-        throw new Error(`HTTP ${response.status}: ${errorData}`);
+        console.log('Error response:', responseText);
+        throw new Error(`HTTP ${response.status}: ${responseText}`);
       }
 
-      const data = await response.json();
+      // Try to parse as JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+        console.log('Full response text:', responseText);
+        throw new Error('Server returned invalid JSON response');
+      }
       console.log('Success! Data received:', data);
       
       setBasicStats({
