@@ -38,7 +38,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     'https://carintel.nl',
     'https://www.carintel.nl',
     'http://localhost:5173',
-    'http://localhost:3000'
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3002'
   ];
   
   if (origin && allowedOrigins.includes(origin)) {
