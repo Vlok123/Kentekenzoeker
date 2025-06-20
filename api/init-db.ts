@@ -1,9 +1,8 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { Pool } from 'pg';
-import bcrypt from 'bcryptjs';
 
 const pool = new Pool({
-  connectionString: 'postgresql://neondb_owner:npg_p1IJPygusA8w@ep-patient-mouse-a9tzeizd-pooler.gwc.azure.neon.tech/neondb?sslmode=require',
+  connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_p1IJPygusA8w@ep-patient-mouse-a9tzeizd-pooler.gwc.azure.neon.tech/neondb?sslmode=require',
   ssl: {
     rejectUnauthorized: false
   }
@@ -12,13 +11,15 @@ const pool = new Pool({
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Enable CORS
   const origin = req.headers.origin;
-    const allowedOrigins = [
+  const allowedOrigins = [
     'https://carintel.nl',
     'https://www.carintel.nl',
     'http://localhost:5173',
-    'http://localhost:3000'
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3002'
   ];
-
+  
   if (origin && allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   } else {
@@ -40,33 +41,68 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const client = await pool.connect();
   
   try {
-    // Users table
+    console.log('🚀 Initializing database schema...');
+
+    // Create users table
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
         name VARCHAR(255),
-        role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+        role VARCHAR(50) DEFAULT 'user',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+      )
     `);
+    console.log('✅ Users table created/verified');
 
-    // Saved searches table
+    // Create activity_logs table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS activity_logs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        action VARCHAR(100) NOT NULL,
+        details JSONB DEFAULT '{}',
+        ip_address INET,
+        user_agent TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Activity logs table created/verified');
+
+    // Create anonymous_searches table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS anonymous_searches (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        search_query VARCHAR(255),
+        search_type VARCHAR(50) NOT NULL,
+        search_filters JSONB DEFAULT '{}',
+        result_count INTEGER DEFAULT 0,
+        session_id VARCHAR(255),
+        ip_address INET,
+        user_agent TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Anonymous searches table created/verified');
+
+    // Create saved_searches table
     await client.query(`
       CREATE TABLE IF NOT EXISTS saved_searches (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-        search_query TEXT,
-        search_filters JSONB,
         name VARCHAR(255) NOT NULL,
-        kentekens JSONB DEFAULT '[]'::jsonb,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+        kentekens TEXT[] NOT NULL,
+        search_query VARCHAR(255),
+        search_filters JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
     `);
+    console.log('✅ Saved searches table created/verified');
 
-    // Saved vehicles table
+    // Create saved_vehicles table
     await client.query(`
       CREATE TABLE IF NOT EXISTS saved_vehicles (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -74,84 +110,74 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         kenteken VARCHAR(20) NOT NULL,
         vehicle_data JSONB NOT NULL,
         notes TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, kenteken)
+      )
     `);
+    console.log('✅ Saved vehicles table created/verified');
 
-    // Activity logs table for tracking user actions
+    // Create indexes for better performance
     await client.query(`
-      CREATE TABLE IF NOT EXISTS activity_logs (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-        action VARCHAR(100) NOT NULL,
-        details JSONB,
-        ip_address INET,
-        user_agent TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      
       CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id ON activity_logs(user_id);
-      CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at DESC);
     `);
-
-    // Anonymous searches table for tracking searches without account
     await client.query(`
-      CREATE TABLE IF NOT EXISTS anonymous_searches (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        search_query TEXT,
-        search_type VARCHAR(50) NOT NULL, -- 'kenteken', 'wildcard', 'trekgewicht'
-        search_filters JSONB,
-        result_count INTEGER DEFAULT 0,
-        ip_address INET,
-        user_agent TEXT,
-        session_id VARCHAR(255),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      
-      CREATE INDEX IF NOT EXISTS idx_anonymous_searches_created_at ON anonymous_searches(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON activity_logs(action);
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at);
+    `);
+    await client.query(`
       CREATE INDEX IF NOT EXISTS idx_anonymous_searches_search_type ON anonymous_searches(search_type);
-      CREATE INDEX IF NOT EXISTS idx_anonymous_searches_ip ON anonymous_searches(ip_address);
     `);
-
-    // Create cleanup function for old saved vehicles (30 days)
     await client.query(`
-      CREATE OR REPLACE FUNCTION cleanup_old_saved_vehicles()
-      RETURNS void AS $$
-      BEGIN
-        DELETE FROM saved_vehicles 
-        WHERE created_at < NOW() - INTERVAL '30 days';
-        
-        DELETE FROM saved_searches 
-        WHERE created_at < NOW() - INTERVAL '30 days';
-      END;
-      $$ LANGUAGE plpgsql;
+      CREATE INDEX IF NOT EXISTS idx_anonymous_searches_created_at ON anonymous_searches(created_at);
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_saved_searches_user_id ON saved_searches(user_id);
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_saved_vehicles_user_id ON saved_vehicles(user_id);
+    `);
+    console.log('✅ Database indexes created/verified');
+
+    // Get table statistics
+    const tablesResult = await client.query(`
+      SELECT 
+        schemaname,
+        tablename,
+        n_tup_ins as inserts,
+        n_tup_upd as updates,
+        n_tup_del as deletes,
+        n_live_tup as live_rows,
+        n_dead_tup as dead_rows
+      FROM pg_stat_user_tables 
+      ORDER BY tablename
     `);
 
-    // Create admin user if not exists
-    const adminExists = await client.query(
-      'SELECT id FROM users WHERE email = $1',
-      ['sanderhelmink@gmail.com']
-    );
+    const tables = tablesResult.rows;
 
-    if (adminExists.rows.length === 0) {
-      const hashedPassword = await bcrypt.hash('admin123!', 12);
-      
-      await client.query(`
-        INSERT INTO users (email, password_hash, name, role)
-        VALUES ($1, $2, $3, $4)
-      `, ['sanderhelmink@gmail.com', hashedPassword, 'Sander Helmink', 'admin']);
-      
-      console.log('Admin user created for sanderhelmink@gmail.com');
-    }
+    // Get database size
+    const dbSizeResult = await client.query(`
+      SELECT pg_size_pretty(pg_database_size(current_database())) as size
+    `);
+    const databaseSize = dbSizeResult.rows[0].size;
 
-    return res.status(200).json({ 
-      success: true, 
-      message: 'Database initialized successfully' 
+    console.log('🎉 Database initialization completed successfully!');
+
+    return res.status(200).json({
+      success: true,
+      message: 'Database schema initialized successfully',
+      tables: tables,
+      databaseSize: databaseSize,
+      timestamp: new Date().toISOString()
     });
+
   } catch (error: any) {
-    console.error('Database initialization error:', error);
+    console.error('❌ Database initialization error:', error);
     return res.status(500).json({ 
-      error: error.message || 'Database initialization failed' 
+      error: 'Database initialization failed', 
+      details: error.message 
     });
   } finally {
     client.release();
