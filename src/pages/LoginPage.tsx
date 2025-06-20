@@ -273,12 +273,7 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {/* Beta notice */}
-          <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-            <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
-              🚧 Dit is een demo versie. Je gegevens worden alleen lokaal opgeslagen.
-            </p>
-          </div>
+
         </div>
       </div>
     </div>

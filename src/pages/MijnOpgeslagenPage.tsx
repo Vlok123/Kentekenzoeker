@@ -215,11 +215,7 @@ export default function MijnOpgeslagenPage() {
                 </div>
               </div>
 
-              {/* Download Info */}
-              <div className="mb-4 text-xs text-slate-500 dark:text-slate-400">
-                📋 Download bevat {Math.ceil(result.kentekens.length / 20)} regel(s) 
-                van max. 20 kentekens per regel
-              </div>
+
 
               {/* Actions */}
               <button
