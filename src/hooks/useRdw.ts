@@ -301,20 +301,35 @@ export function useVehicleByLicensePlate(kenteken: string, enabled = true) {
       
       console.log('Searching for vehicle:', normalizedKenteken);
       
-      const response = await rdwApi.get<RdwVehicle[]>(VEHICLES_ENDPOINT, {
-        params: {
-          kenteken: normalizedKenteken,
-          $limit: 1,
-        },
-      });
+      // Haal zowel hoofdvoertuig data als brandstof data op
+      const [vehicleResponse, fuelResponse] = await Promise.allSettled([
+        rdwApi.get<RdwVehicle[]>(VEHICLES_ENDPOINT, {
+          params: {
+            kenteken: normalizedKenteken,
+            $limit: 1,
+          },
+        }),
+        rdwApi.get<RdwBrandstofData[]>(BRANDSTOF_ENDPOINT, {
+          params: {
+            kenteken: normalizedKenteken,
+            $limit: 10,
+          },
+        }).catch(() => ({ data: [] })) // Graceful fallback voor brandstof data
+      ]);
 
-      console.log('RDW API response:', response.data);
-
-      if (!response.data || response.data.length === 0) {
+      // Check vehicle response
+      if (vehicleResponse.status === 'rejected' || !vehicleResponse.value.data || vehicleResponse.value.data.length === 0) {
         throw new Error(`Geen voertuig gevonden met kenteken ${kenteken}. Probeer een echt Nederlands kenteken.`);
       }
 
-      const vehicle = processVehicleData(response.data[0]);
+      console.log('RDW API vehicle response:', vehicleResponse.value.data);
+      
+      // Extract fuel data (safe fallback)
+      const fuelData = fuelResponse.status === 'fulfilled' ? fuelResponse.value.data : [];
+      console.log('RDW API fuel response:', fuelData);
+
+      // Process vehicle data with fuel data als fallback voor brandstof info
+      const vehicle = processVehicleData(vehicleResponse.value.data[0], fuelData);
       
       // Cache the result
       addVehicleToCache(kenteken, vehicle);
@@ -451,7 +466,7 @@ export function useVehicleSearch(query: string, filters: SearchFilters, enabled 
 
       const response = await rdwApi.get<RdwVehicle[]>(VEHICLES_ENDPOINT, { params });
 
-      let vehicles = response.data.map(processVehicleData);
+      let vehicles = response.data.map(rdwVehicle => processVehicleData(rdwVehicle));
 
       // Apply client-side wildcard filtering if needed (fallback for cases where LIKE didn't work perfectly)
       if (query && query.includes('*')) {

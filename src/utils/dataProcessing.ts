@@ -5,23 +5,40 @@ import type { RdwVehicle, ProcessedVehicle, Milieuzone, Province } from '@/types
 /**
  * Converteert RDW API data naar UI-vriendelijke data
  */
-export function processVehicleData(rdwData: RdwVehicle): ProcessedVehicle {
+export function processVehicleData(rdwData: RdwVehicle, fuelData?: any[]): ProcessedVehicle {
   const apkDate = parseRdwDate(rdwData.apk_geldig_tot);
   const datumEersteToelating = parseRdwDate(rdwData.datum_eerste_toelating);
   const today = new Date();
   // const twoMonthsFromNow = addMonths(today, 2);
 
+  // Probeer brandstof informatie uit verschillende bronnen te halen
+  let brandstofType = rdwData.brandstof_hoofdsoort || rdwData.brandstof_nevensoort;
+  
+  // Als geen brandstof gevonden in hoofddata, probeer fuelData (extra brandstof endpoint)
+  if ((!brandstofType || brandstofType === 'Onbekend') && fuelData && fuelData.length > 0) {
+    const primaryFuel = fuelData.find(f => f.brandstof_omschrijving);
+    if (primaryFuel) {
+      brandstofType = primaryFuel.brandstof_omschrijving;
+    }
+  }
+
   // Debug logging voor brandstof detectie
   console.log('🔍 RDW RAW DATA voor', rdwData.kenteken, ':', {
     brandstof_hoofdsoort: rdwData.brandstof_hoofdsoort,
     brandstof_nevensoort: rdwData.brandstof_nevensoort,
+    fuelData_available: fuelData ? fuelData.length : 0,
+    fuelData_first: fuelData?.[0]?.brandstof_omschrijving,
+    final_brandstof: brandstofType,
     all_brandstof_fields: Object.keys(rdwData).filter(key => key.toLowerCase().includes('brandstof')),
-    normalized: normalizeFuelType(rdwData.brandstof_hoofdsoort)
+    normalized: normalizeFuelType(brandstofType)
   });
   
   // Log hele object als brandstof hoofdsoort leeg is
   if (!rdwData.brandstof_hoofdsoort) {
-    console.log('⚠️ GEEN BRANDSTOF DATA - Volledige RDW object:', rdwData);
+    console.log('⚠️ GEEN BRANDSTOF DATA in hoofdvehicle data - Volledige RDW object:', rdwData);
+    if (fuelData && fuelData.length > 0) {
+      console.log('✅ Wel brandstof data gevonden in fuel endpoint:', fuelData);
+    }
   }
 
   return {
@@ -30,7 +47,7 @@ export function processVehicleData(rdwData: RdwVehicle): ProcessedVehicle {
     model: rdwData.handelsbenaming || rdwData.type_uitvoering || 'Onbekend',
     bouwjaar: extractYear(rdwData.datum_eerste_toelating),
     datumEersteToelating: datumEersteToelating,
-    brandstof: normalizeFuelType(rdwData.brandstof_hoofdsoort || rdwData.brandstof_nevensoort),
+    brandstof: normalizeFuelType(brandstofType),
     kleur: normalizeColor(rdwData.eerste_kleur),
     voertuigsoort: rdwData.voertuigsoort || 'Personenauto',
     eerste_kleur: rdwData.eerste_kleur || 'Onbekend',
