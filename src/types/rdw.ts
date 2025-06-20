@@ -283,6 +283,26 @@ export interface RdwRoadTaxData {
   bpm_code_omschrijving: string;
 }
 
+// APK Keuringen (vkij-7mwc.json) - Nieuwe APK historie endpoint
+export interface RdwApkKeuring {
+  kenteken: string;
+  datum_melding: string;
+  vervaldatum_keuring: string;
+  keuringsinstantie_naam: string;
+  keuringsinstantie_locatie?: string;
+  gebreken?: string;
+  // Andere velden die mogelijk beschikbaar zijn
+  [key: string]: any;
+}
+
+// Verwerkte APK historie voor UI
+export interface ApkHistorieNieuw {
+  datum_melding: string;
+  vervaldatum_keuring: string;
+  keuringsinstantie_naam: string;
+  gebreken: string[];
+}
+
 // Processed Vehicle Data for UI (Extended)
 export interface ProcessedVehicle {
   kenteken: string;

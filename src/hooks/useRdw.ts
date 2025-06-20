@@ -25,7 +25,9 @@ import type {
   RdwEnvironmentData,
   RdwTechnicalData,
   RdwFuelData,
-  RdwRoadTaxData
+  RdwRoadTaxData,
+  RdwApkKeuring,
+  ApkHistorieNieuw,
 } from '@/types/rdw';
 
 // RDW API Base URLs - direct access (RDW supports CORS)
@@ -43,6 +45,7 @@ const BRANDSTOF_ENDPOINT = `${RDW_BASE_URL}/8ys7-d773.json`; // Fuel/emissions d
 const APK_ENDPOINT = `${RDW_BASE_URL}/w4rt-e856.json`; // APK keuringen (working endpoint)
 const APK_EXPIRY_ENDPOINT = `${RDW_BASE_URL}/vezc-m2t6.json`; // APK expiry (same as carrosserie)
 const APK_HISTORY_ENDPOINT = `${RDW_BASE_URL}/w4rt-e856.json`; // APK keuringen (working endpoint)
+const APK_KEURINGEN_ENDPOINT = `${RDW_BASE_URL}/vkij-7mwc.json`; // APK Keuringen dataset
 
 // Additional data endpoints
 const EMISSIONS_ENDPOINT = `${RDW_BASE_URL}/8ys7-d773.json`; // Same as brandstof
@@ -101,6 +104,125 @@ async function safeRdwApiCall<T>(endpoint: string, params: any): Promise<T[]> {
     }
     throw error;
   }
+}
+
+/**
+ * Functie voor het ophalen van APK historie van een voertuig
+ * Gebruikt de RDW Open Data API (vkij-7mwc.json)
+ */
+export async function getApkHistorie(kenteken: string): Promise<ApkHistorieNieuw[]> {
+  try {
+    if (!kenteken) {
+      return [];
+    }
+
+    // Normaliseer kenteken (uppercase, zonder streepjes)
+    const normalizedKenteken = kenteken.toUpperCase().replace(/-/g, '');
+
+    // Roep RDW API aan
+    const response = await fetch(`${APK_KEURINGEN_ENDPOINT}?kenteken=${normalizedKenteken}`);
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        // Geen APK historie gevonden - dit is normaal voor sommige voertuigen
+        return [];
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data: RdwApkKeuring[] = await response.json();
+
+    if (!Array.isArray(data) || data.length === 0) {
+      return [];
+    }
+
+    // Verwerk de data
+    const processedData: ApkHistorieNieuw[] = data.map(keuring => {
+      // Verwerk gebreken (als string met komma's gescheiden)
+      let gebreken: string[] = [];
+      if (keuring.gebreken && typeof keuring.gebreken === 'string') {
+        gebreken = keuring.gebreken.split(',').map(g => g.trim()).filter(g => g.length > 0);
+      }
+
+      return {
+        datum_melding: formatDateToDDMMYYYY(keuring.datum_melding),
+        vervaldatum_keuring: formatDateToDDMMYYYY(keuring.vervaldatum_keuring),
+        keuringsinstantie_naam: keuring.keuringsinstantie_naam || 'Onbekend',
+        gebreken: gebreken
+      };
+    });
+
+    // Sorteer op datum (meest recent bovenaan)
+    processedData.sort((a, b) => {
+      const dateA = parseDDMMYYYY(a.datum_melding);
+      const dateB = parseDDMMYYYY(b.datum_melding);
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    return processedData;
+
+  } catch (error) {
+    console.error('Fout bij ophalen APK historie:', error);
+    throw new Error(`Failed to fetch APK historie: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+// Helper functie om datum te formatteren naar DD-MM-YYYY
+function formatDateToDDMMYYYY(dateString: string): string {
+  if (!dateString) return '';
+  
+  try {
+    // Probeer verschillende datum formaten
+    let date: Date;
+    
+    if (dateString.includes('T')) {
+      // ISO format (2024-02-10T00:00:00.000)
+      date = new Date(dateString);
+    } else if (dateString.includes('-')) {
+      // YYYY-MM-DD format
+      date = new Date(dateString);
+    } else if (dateString.length === 8) {
+      // YYYYMMDD format
+      const year = dateString.substring(0, 4);
+      const month = dateString.substring(4, 6);
+      const day = dateString.substring(6, 8);
+      date = new Date(`${year}-${month}-${day}`);
+    } else {
+      return dateString; // Return as-is if we can't parse it
+    }
+
+    if (isNaN(date.getTime())) {
+      return dateString; // Return as-is if invalid date
+    }
+
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    
+    return `${day}-${month}-${year}`;
+  } catch (error) {
+    console.warn('Fout bij formatteren datum:', dateString, error);
+    return dateString;
+  }
+}
+
+// Helper functie om DD-MM-YYYY string naar Date object te converteren
+function parseDDMMYYYY(dateString: string): Date {
+  if (!dateString) return new Date(0);
+  
+  try {
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+      const year = parseInt(parts[2], 10);
+      return new Date(year, month, day);
+    }
+  } catch (error) {
+    console.warn('Fout bij parsen datum:', dateString, error);
+  }
+  
+  return new Date(0);
 }
 
 /**
@@ -559,6 +681,24 @@ export function useVehicleSearch(query: string, filters: SearchFilters, enabled 
         message: error.message,
       });
     },
+  });
+}
+
+/**
+ * Hook voor het ophalen van APK historie van een voertuig
+ */
+export function useApkHistorie(kenteken: string, enabled = true) {
+  return useQuery({
+    queryKey: ['apk-historie', kenteken],
+    queryFn: async () => {
+      if (!kenteken) {
+        return [];
+      }
+      return await getApkHistorie(kenteken);
+    },
+    enabled: enabled && !!kenteken,
+    staleTime: 1000 * 60 * 30, // 30 minutes
+    cacheTime: 1000 * 60 * 60 * 2, // 2 hours
   });
 }
 
