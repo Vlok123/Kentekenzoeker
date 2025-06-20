@@ -15,10 +15,11 @@ export function processVehicleData(rdwData: RdwVehicle, fuelData?: any[]): Proce
   let brandstofType = rdwData.brandstof_hoofdsoort || rdwData.brandstof_nevensoort;
   
   // Als geen brandstof gevonden in hoofddata, probeer fuelData (extra brandstof endpoint)
-  if ((!brandstofType || brandstofType === 'Onbekend') && fuelData && fuelData.length > 0) {
+  if ((!brandstofType || brandstofType === 'Onbekend' || brandstofType === null || brandstofType === undefined) && fuelData && fuelData.length > 0) {
     const primaryFuel = fuelData.find(f => f.brandstof_omschrijving);
-    if (primaryFuel) {
+    if (primaryFuel && primaryFuel.brandstof_omschrijving) {
       brandstofType = primaryFuel.brandstof_omschrijving;
+      console.log('✅ Brandstof gevonden via fuel endpoint:', primaryFuel.brandstof_omschrijving);
     }
   }
 
