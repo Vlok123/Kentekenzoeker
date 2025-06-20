@@ -10,7 +10,7 @@ const pool = new Pool({
   }
 });
 
-const JWT_SECRET = process.env.JWT_SECRET || '0b6bb64318dff2961767e358d53fd3c1f3c5e07e8cc2418493fd03163e249a42f585663b23ad695f0ec448eab47ee934afc87d1d697ea5476752f82dd86604bb';
+const JWT_SECRET = process.env.JWT_SECRET || 'ea1783e3151ee64424006ef07939a2c9e31e8449500c2f0175ee496e2412fd0dc2ec9381e46229f373a4e40f4bedbca5a168390b3d68fdeb1e8e804fc8411c54';
 
 // Ensure we have a proper JWT secret
 if (!process.env.JWT_SECRET) {
@@ -26,7 +26,7 @@ function debugEnvironment() {
     jwtSecretFromEnv: !!process.env.JWT_SECRET,
     nodeEnv: process.env.NODE_ENV,
     timestamp: new Date().toISOString(),
-    isUsingDefaultSecret: JWT_SECRET === '0b6bb64318dff2961767e358d53fd3c1f3c5e07e8cc2418493fd03163e249a42f585663b23ad695f0ec448eab47ee934afc87d1d697ea5476752f82dd86604bb'
+    isUsingDefaultSecret: JWT_SECRET === 'ea1783e3151ee64424006ef07939a2c9e31e8449500c2f0175ee496e2412fd0dc2ec9381e46229f373a4e40f4bedbca5a168390b3d68fdeb1e8e804fc8411c54'
   };
 }
 const JWT_EXPIRES_IN = '7d';
