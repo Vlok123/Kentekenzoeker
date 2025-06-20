@@ -7,7 +7,6 @@ import { ApiAuthService } from '@/lib/api-auth';
 import type { 
   RdwVehicle, 
   RdwRecall, 
-  RdwApkData,
   RdwBrandstofData,
   RdwCarrosserieData,
   RdwAssenData,
