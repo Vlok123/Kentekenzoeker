@@ -383,6 +383,23 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
       `);
       const databaseSize = dbSizeResult.rows[0].size;
 
+      // Get detailed user activity
+      const userActivityResult = await client.query(`
+        SELECT 
+          u.email,
+          u.name,
+          u.created_at,
+          COUNT(CASE WHEN al.action = 'SEARCH' THEN 1 END) as search_count,
+          COUNT(CASE WHEN al.action = 'LOGIN' THEN 1 END) as login_count,
+          COUNT(al.id) as total_activities,
+          MAX(al.created_at) as last_activity
+        FROM users u
+        LEFT JOIN activity_logs al ON u.id = al.user_id
+        GROUP BY u.id, u.email, u.name, u.created_at
+        ORDER BY search_count DESC, total_activities DESC
+      `);
+      const userActivity = userActivityResult.rows;
+
       return res.status(200).json({
         totalUsers,
         activeUsers,
@@ -392,7 +409,8 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
         recentUsers,
         searchesByDay,
         savedVehicles,
-        databaseSize
+        databaseSize,
+        userActivity
       });
     } finally {
       client.release();

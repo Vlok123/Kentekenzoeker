@@ -10,7 +10,10 @@ import {
   TrendingUp,
   Calendar,
   Database,
-  AlertCircle
+  AlertCircle,
+  User,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { fetchWithAuth } from '@/lib/api-auth';
@@ -25,12 +28,22 @@ interface AdminStats {
   searchesByDay: Array<{ date: string; count: number }>;
   savedVehicles: number;
   databaseSize: string;
+  userActivity: Array<{
+    email: string;
+    name: string;
+    search_count: number;
+    login_count: number;
+    total_activities: number;
+    last_activity: string;
+    created_at: string;
+  }>;
 }
 
 export default function AdminPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showUserDetails, setShowUserDetails] = useState(false);
 
   const { user, logout } = useAppStore();
   const navigate = useNavigate();
@@ -194,6 +207,141 @@ export default function AdminPage() {
                 Zoekopdrachten vandaag
               </p>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* User Activity Section */}
+      <div className="mb-8">
+        <div className="card">
+          <div className="card-header">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <User className="w-5 h-5" />
+                Gebruikersactiviteit
+              </h2>
+              <button
+                onClick={() => setShowUserDetails(!showUserDetails)}
+                className="btn btn-sm btn-secondary"
+              >
+                {showUserDetails ? (
+                  <>
+                    <ChevronUp className="w-4 h-4 mr-1" />
+                    Verberg details
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="w-4 h-4 mr-1" />
+                    Toon details
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+          <div className="card-content">
+            {loading ? (
+              <p className="text-slate-500">Laden...</p>
+            ) : stats?.userActivity && stats.userActivity.length > 0 ? (
+              <div className="space-y-4">
+                {/* Summary View */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Meest actieve gebruiker</p>
+                    <p className="font-semibold text-slate-900 dark:text-slate-100">
+                      {stats.userActivity[0]?.email}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {stats.userActivity[0]?.search_count} zoekopdrachten
+                    </p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Gemiddeld per gebruiker</p>
+                    <p className="font-semibold text-slate-900 dark:text-slate-100">
+                      {Math.round(stats.userActivity.reduce((sum, user) => sum + user.search_count, 0) / stats.userActivity.length)}
+                    </p>
+                    <p className="text-sm text-slate-500">zoekopdrachten</p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Actieve gebruikers</p>
+                    <p className="font-semibold text-slate-900 dark:text-slate-100">
+                      {stats.userActivity.filter(user => user.search_count > 0).length}
+                    </p>
+                    <p className="text-sm text-slate-500">van {stats.userActivity.length}</p>
+                  </div>
+                </div>
+
+                {/* Detailed View */}
+                {showUserDetails && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-slate-200 dark:border-slate-700">
+                          <th className="text-left py-3 px-4 font-medium text-slate-700 dark:text-slate-300">Gebruiker</th>
+                          <th className="text-right py-3 px-4 font-medium text-slate-700 dark:text-slate-300">Zoekopdrachten</th>
+                          <th className="text-right py-3 px-4 font-medium text-slate-700 dark:text-slate-300">Logins</th>
+                          <th className="text-right py-3 px-4 font-medium text-slate-700 dark:text-slate-300">Totale activiteit</th>
+                          <th className="text-right py-3 px-4 font-medium text-slate-700 dark:text-slate-300">Laatste activiteit</th>
+                          <th className="text-right py-3 px-4 font-medium text-slate-700 dark:text-slate-300">Lid sinds</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {stats.userActivity.map((userActivity, index) => (
+                          <tr key={index} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <td className="py-3 px-4">
+                              <div>
+                                <p className="font-medium text-slate-900 dark:text-slate-100">
+                                  {userActivity.name || 'Geen naam'}
+                                </p>
+                                <p className="text-sm text-slate-600 dark:text-slate-400">
+                                  {userActivity.email}
+                                </p>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                userActivity.search_count > 10 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                                  : userActivity.search_count > 0
+                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                                  : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
+                              }`}>
+                                {userActivity.search_count}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-400">
+                              {userActivity.login_count}
+                            </td>
+                            <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-400">
+                              {userActivity.total_activities}
+                            </td>
+                            <td className="py-3 px-4 text-right text-sm text-slate-600 dark:text-slate-400">
+                              {userActivity.last_activity 
+                                ? new Date(userActivity.last_activity).toLocaleDateString('nl-NL', {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })
+                                : 'Geen activiteit'
+                              }
+                            </td>
+                            <td className="py-3 px-4 text-right text-sm text-slate-600 dark:text-slate-400">
+                              {new Date(userActivity.created_at).toLocaleDateString('nl-NL', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric'
+                              })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-slate-500">Geen gebruikersactiviteit beschikbaar</p>
+            )}
           </div>
         </div>
       </div>
