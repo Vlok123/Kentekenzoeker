@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, RefreshCw, LogOut, AlertCircle } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
+import { ApiAuthService } from '@/lib/api-auth';
 
 export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -70,21 +71,8 @@ export default function AdminPage() {
       // Check current time for debugging
       console.log('Current time:', new Date().toISOString());
 
-      // Simple fetch test
-      const response = await fetch('/api/auth?action=admin-stats', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorData}`);
-      }
-
-      const data = await response.json();
+      // Use ApiAuthService for consistent API calls
+      const data = await ApiAuthService.getAdminStats(token);
       console.log('Success! Data received:', data);
       
       setBasicStats({
