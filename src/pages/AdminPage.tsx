@@ -67,8 +67,7 @@ export default function AdminPage() {
       console.log('localStorage items:', Object.keys(localStorage));
       console.log('sessionStorage items:', Object.keys(sessionStorage));
       
-      // Check if this is really a fresh token
-      const tokenAge = Date.now() - (new Date().getTime());
+      // Check current time for debugging
       console.log('Current time:', new Date().toISOString());
 
       // Simple fetch test
