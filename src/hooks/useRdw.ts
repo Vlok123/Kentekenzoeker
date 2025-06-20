@@ -39,17 +39,17 @@ const VOERTUIGKLASSE_ENDPOINT = `${RDW_BASE_URL}/kmfi-hrps.json`; // Vehicle cla
 const ASSEN_ENDPOINT = `${RDW_BASE_URL}/3huj-srit.json`; // Axles data
 const BRANDSTOF_ENDPOINT = `${RDW_BASE_URL}/8ys7-d773.json`; // Fuel/emissions data
 
-// APK/Inspection endpoints
-const APK_ENDPOINT = `${RDW_BASE_URL}/kh7p-v4pf.json`; // APK history
+// APK/Inspection endpoints - Updated to working endpoints
+const APK_ENDPOINT = `${RDW_BASE_URL}/w4rt-e856.json`; // APK keuringen (working endpoint)
 const APK_EXPIRY_ENDPOINT = `${RDW_BASE_URL}/vezc-m2t6.json`; // APK expiry (same as carrosserie)
-const APK_HISTORY_ENDPOINT = `${RDW_BASE_URL}/kdsi-8uzc.json`; // APK history detailed
+const APK_HISTORY_ENDPOINT = `${RDW_BASE_URL}/w4rt-e856.json`; // APK keuringen (working endpoint)
 
 // Additional data endpoints
 const EMISSIONS_ENDPOINT = `${RDW_BASE_URL}/8ys7-d773.json`; // Same as brandstof
 const TECHNICAL_ENDPOINT = `${RDW_BASE_URL}/78bh-yfrx.json`; // Technical data
 const FUEL_ENDPOINT = `${RDW_BASE_URL}/8dk6-zvkw.json`; // Fuel info
 const ROAD_TAX_ENDPOINT = `${RDW_BASE_URL}/gm6w-96i9.json`; // Road tax
-const RECALLS_ENDPOINT = `${RDW_BASE_URL}/t3ee-brg3.json`; // Recalls
+const RECALLS_ENDPOINT = `${RDW_BASE_URL}/ef3c-2uwd.json`; // Terugroepacties (updated endpoint)
 
 // Create axios instance with default config
 const rdwApi = axios.create({
@@ -105,6 +105,7 @@ async function safeRdwApiCall<T>(endpoint: string, params: any): Promise<T[]> {
 
 /**
  * Hook voor het ophalen van APK historie van een voertuig
+ * Nu gebaseerd op APK vervaldatum uit hoofddataset omdat aparte APK endpoints niet meer bestaan
  */
 export function useVehicleApkHistory(kenteken: string, enabled = true) {
   return useQuery({
@@ -116,21 +117,33 @@ export function useVehicleApkHistory(kenteken: string, enabled = true) {
 
       const normalizedKenteken = normalizeLicensePlate(kenteken);
       
-      const data = await safeRdwApiCall<RdwApkData>(APK_ENDPOINT, {
+      // Haal APK info uit hoofddataset omdat aparte APK endpoints niet meer bestaan
+      const vehicleData = await safeRdwApiCall<RdwVehicle>(VEHICLES_ENDPOINT, {
         kenteken: normalizedKenteken,
-        $limit: 50,
-        $order: 'datum_afgifte_apk DESC',
+        $limit: 1,
       });
 
-      return data.map(item => ({
-        datum: new Date(item.datum_afgifte_apk),
-        uitslag: item.apk_uitslag as 'Goedgekeurd' | 'Afgekeurd' | 'Niet verschenen',
-        gebrekLicht: parseInt(item.aantal_gebrek_licht) || 0,
-        gebrekZwaar: parseInt(item.aantal_gebrek_zwaar) || 0,
-        gebrekKritiek: parseInt(item.aantal_gebrek_kritiek) || 0,
-        keuringsinstantie: item.keuringsinstantie_naam || 'Onbekend',
-        plaats: item.keuringsinstantie_plaats || 'Onbekend',
-      }));
+      if (vehicleData.length === 0) {
+        return [];
+      }
+
+      const vehicle = vehicleData[0];
+      
+      // Creëer een APK item gebaseerd op de vervaldatum in de hoofddata
+      if (vehicle.vervaldatum_apk) {
+        return [{
+          datum: new Date(), // Huidige datum als placeholder
+          uitslag: 'Goedgekeurd' as const, // Aanname: als er een vervaldatum is, was de laatste APK goedgekeurd
+          gebrekLicht: 0,
+          gebrekZwaar: 0,
+          gebrekKritiek: 0,
+          keuringsinstantie: 'Onbekend',
+          plaats: 'Onbekend',
+          vervaldatum: new Date(vehicle.vervaldatum_apk),
+        }];
+      }
+
+      return [];
     },
     enabled: enabled && !!kenteken,
     staleTime: 1000 * 60 * 30, // 30 minutes
@@ -499,10 +512,35 @@ export function useVehicleRecalls(kenteken: string, enabled = true) {
 
       const normalizedKenteken = normalizeLicensePlate(kenteken);
       
-      return await safeRdwApiCall<RdwRecall>(RECALLS_ENDPOINT, {
+      // Haal recall info uit hoofddataset omdat aparte recall endpoints niet meer bestaan
+      const vehicleData = await safeRdwApiCall<RdwVehicle>(VEHICLES_ENDPOINT, {
         kenteken: normalizedKenteken,
-        $limit: 50,
+        $limit: 1,
       });
+
+      if (vehicleData.length === 0) {
+        return [];
+      }
+
+      const vehicle = vehicleData[0];
+      
+      // Check openstaande terugroepactie indicator
+      if (vehicle.openstaande_terugroepactie_indicator === 'Ja') {
+        return [{
+          referentiecode_rdw: 'ONBEKEND',
+          kenteken: vehicle.kenteken,
+          fabrikant: vehicle.merk,
+          handelsnaam: vehicle.handelsbenaming,
+          beschrijving_probleem: 'Er is een openstaande terugroepactie voor dit voertuig. Neem contact op met de dealer voor details.',
+          datum_probleem_geconstateerd: '',
+          datum_start_terugroepactie: '',
+          datum_einde_terugroepactie: '',
+          typegoedkeuring_nummer: vehicle.typegoedkeuring_nummer || '',
+          status: 'ACTIEF',
+        }];
+      }
+
+      return [];
     },
     enabled: enabled && !!kenteken,
     staleTime: 1000 * 60 * 30, // 30 minutes

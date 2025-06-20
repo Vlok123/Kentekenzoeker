@@ -353,6 +353,7 @@ export interface ApkHistorieItem {
   gebrekKritiek: number;
   keuringsinstantie: string;
   plaats: string;
+  vervaldatum?: Date; // Optioneel: vervaldatum van APK
 }
 
 // Axle Information
