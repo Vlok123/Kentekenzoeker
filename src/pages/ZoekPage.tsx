@@ -173,6 +173,13 @@ export default function ZoekPage() {
         <p className="mt-2 text-lg text-slate-600 dark:text-slate-300">
           Zoek voertuigen met wildcards (*) en uitgebreide filters: merk, brandstof, aantal deuren, zitplaatsen en meer
         </p>
+        <div className="mt-3 max-w-2xl mx-auto">
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
+            <p className="text-green-700 dark:text-green-300 text-sm font-medium text-center">
+              🎉 Tijdelijk gratis toegang tot alle RDW gegevens inclusief APK historie met gebreken details!
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Search Form */}

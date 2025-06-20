@@ -75,10 +75,23 @@ export default function HomePage() {
             </div>
 
             {/* Subtitle */}
-            <p className="text-lg sm:text-xl text-slate-600 dark:text-white/70 max-w-2xl mx-auto mb-8 leading-relaxed">
+            <p className="text-lg sm:text-xl text-slate-600 dark:text-white/70 max-w-2xl mx-auto mb-6 leading-relaxed">
               Ontdek alles over elk Nederlands voertuig met real-time RDW data 
               en een moderne, gebruiksvriendelijke ervaring.
             </p>
+            
+            {/* Free Access Notice */}
+            <div className="max-w-lg mx-auto mb-8">
+              <div className="glass-card p-4 border-2 border-green-300 dark:border-green-600 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 shadow-lg">
+                <p className="text-green-800 dark:text-green-200 font-bold text-base flex items-center justify-center gap-2">
+                  <span className="text-xl">🎉</span>
+                  <span>Tijdelijk gratis toegang tot alle RDW data!</span>
+                </p>
+                <p className="text-green-700 dark:text-green-300 text-sm mt-1">
+                  Inclusief APK historie, technische specs en gebreken details
+                </p>
+              </div>
+            </div>
 
             {/* Beta Notice */}
             <div className="max-w-lg mx-auto mb-12">
@@ -107,9 +120,13 @@ export default function HomePage() {
                   </h4>
                   <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">
                     Zoek voertuigen op kenteken, merk, model of andere criteria. 
-                    Krijg direct toegang tot alle RDW gegevens inclusief APK, 
-                    technische specs en historie.
+                    Gebruik * voor delen van kentekens (bijv. 12-AB*).
                   </p>
+                  <div className="mt-3 p-2 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <p className="text-green-700 dark:text-green-300 text-xs font-semibold">
+                      🎉 Krijg tijdelijk gratis direct toegang tot alle RDW gegevens inclusief APK, technische specs en historie!
+                    </p>
+                  </div>
                 </div>
 
                 {/* Towing Explanation */}
@@ -189,7 +206,7 @@ export default function HomePage() {
                       Voertuigen Zoeken
                     </h3>
                     <p className="text-slate-600 dark:text-white/70 leading-relaxed">
-                      Zoek voertuigen op kenteken, merk, model, bouwjaar en meer. 
+                      Zoek voertuigen op kenteken (gebruik * voor delen), merk, model, bouwjaar en meer. 
                       Klik hier om te beginnen met zoeken.
                     </p>
                   </div>
