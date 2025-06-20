@@ -300,12 +300,38 @@ export interface RdwApkKeuring {
   [key: string]: any;
 }
 
+// Gebreken informatie
+export interface RdwGebrek {
+  gebrek_identificatie: string;
+  gebrek_artikel_nummer: string;
+  gebrek_omschrijving: string;
+}
+
+export interface RdwGebrekConstatering {
+  kenteken: string;
+  soort_erkenning_keuringsinstantie: string;
+  meld_datum_door_keuringsinstantie: string;
+  meld_tijd_door_keuringsinstantie: string;
+  gebrek_identificatie: string;
+  soort_erkenning_omschrijving: string;
+  aantal_gebreken_geconstateerd: string;
+  meld_datum_door_keuringsinstantie_dt: string;
+}
+
+export interface ApkGebrekDetail {
+  code: string;
+  beschrijving: string;
+  aantal: number;
+}
+
 // Verwerkte APK historie voor UI
 export interface ApkHistorieNieuw {
   datum_melding: string;
   vervaldatum_keuring: string;
   keuringsinstantie_naam: string;
-  gebreken: string[];
+  soort_melding: string;
+  tijd_melding: string;
+  gebreken: ApkGebrekDetail[];
 }
 
 // Processed Vehicle Data for UI (Extended)

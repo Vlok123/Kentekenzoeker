@@ -469,30 +469,73 @@ export default function VoertuigDetailPage() {
                 </h2>
               </div>
               
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {apkHistorie.slice(0, 10).map((apk, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-3 h-3 rounded-full bg-green-500" />
-                      <div>
-                        <p className="font-medium text-slate-900 dark:text-white">
-                          Keuring: {apk.datum_melding}
+                  <div key={index} className="border border-slate-200 dark:border-slate-600 rounded-lg p-4 bg-slate-50 dark:bg-slate-700">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-3 h-3 rounded-full ${apk.gebreken.length > 0 ? 'bg-orange-500' : 'bg-green-500'}`} />
+                        <div>
+                          <p className="font-medium text-slate-900 dark:text-white">
+                            Keuring: {apk.datum_melding}
+                            {apk.tijd_melding && (
+                              <span className="text-sm text-slate-600 dark:text-slate-400 ml-2">
+                                om {apk.tijd_melding}
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                            {apk.keuringsinstantie_naam}
+                          </p>
+                          {apk.soort_melding && (
+                            <p className="text-xs text-slate-500 dark:text-slate-500">
+                              {apk.soort_melding}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-slate-900 dark:text-white">
+                          Geldig tot: {apk.vervaldatum_keuring}
                         </p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          {apk.keuringsinstantie_naam}
-                        </p>
+                        {apk.gebreken.length > 0 && (
+                          <p className="text-xs text-orange-600 dark:text-orange-400">
+                            {apk.gebreken.length} gebrek{apk.gebreken.length > 1 ? 'en' : ''} geconstateerd
+                          </p>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-medium text-green-600">
-                        Geldig tot: {apk.vervaldatum_keuring}
-                      </p>
-                      {apk.gebreken.length > 0 && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {apk.gebreken.length} gebrek(en)
-                        </p>
-                      )}
-                    </div>
+                    
+                    {/* Gebreken details */}
+                    {apk.gebreken.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-600">
+                        <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-2 flex items-center">
+                          <AlertTriangle className="w-4 h-4 text-orange-500 mr-2" />
+                          Geconstateerde gebreken:
+                        </h4>
+                        <div className="space-y-2">
+                          {apk.gebreken.map((gebrek, gebrekIndex) => (
+                            <div key={gebrekIndex} className="bg-white dark:bg-slate-800 rounded p-3">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                                    {gebrek.beschrijving}
+                                  </p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    Code: {gebrek.code}
+                                  </p>
+                                </div>
+                                {gebrek.aantal > 1 && (
+                                  <span className="ml-2 px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 text-xs rounded-full">
+                                    {gebrek.aantal}x
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

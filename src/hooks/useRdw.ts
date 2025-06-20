@@ -28,6 +28,9 @@ import type {
   RdwRoadTaxData,
   RdwApkKeuring,
   ApkHistorieNieuw,
+  RdwGebrek,
+  RdwGebrekConstatering,
+  ApkGebrekDetail,
 } from '@/types/rdw';
 
 // RDW API Base URLs - direct access (RDW supports CORS)
@@ -110,6 +113,56 @@ async function safeRdwApiCall<T>(endpoint: string, params: any): Promise<T[]> {
  * Functie voor het ophalen van APK historie van een voertuig
  * Gebruikt de RDW Open Data API (vkij-7mwc.json)
  */
+// Gebrek beschrijving ophalen
+async function getGebrekBeschrijving(gebrekCode: string): Promise<string> {
+  try {
+    const response = await fetch(`https://opendata.rdw.nl/resource/hx2c-gt7k.json?gebrek_identificatie=${gebrekCode}`);
+    if (!response.ok) return gebrekCode;
+    
+    const data: RdwGebrek[] = await response.json();
+    return data[0]?.gebrek_omschrijving || gebrekCode;
+  } catch (error) {
+    console.error(`Error fetching gebrek ${gebrekCode}:`, error);
+    return gebrekCode;
+  }
+}
+
+// Gebreken voor een specifieke keuring ophalen
+async function getGebrekenVoorKeuring(kenteken: string, meldDatum: string): Promise<ApkGebrekDetail[]> {
+  try {
+    const response = await fetch(`https://opendata.rdw.nl/resource/a34c-vvps.json?kenteken=${kenteken.toUpperCase()}&meld_datum_door_keuringsinstantie=${meldDatum}`);
+    
+    if (!response.ok) {
+      return [];
+    }
+    
+    const data: RdwGebrekConstatering[] = await response.json();
+    
+    // Groepeer gebreken per code en haal beschrijvingen op
+    const gebrekMap = new Map<string, number>();
+    data.forEach(item => {
+      const aantal = parseInt(item.aantal_gebreken_geconstateerd) || 1;
+      gebrekMap.set(item.gebrek_identificatie, (gebrekMap.get(item.gebrek_identificatie) || 0) + aantal);
+    });
+    
+    // Haal beschrijvingen op voor alle unieke gebrek codes
+    const gebreken: ApkGebrekDetail[] = [];
+    for (const [code, aantal] of gebrekMap.entries()) {
+      const beschrijving = await getGebrekBeschrijving(code);
+      gebreken.push({
+        code,
+        beschrijving,
+        aantal
+      });
+    }
+    
+    return gebreken;
+  } catch (error) {
+    console.error('Error fetching gebreken:', error);
+    return [];
+  }
+}
+
 export async function getApkHistorie(kenteken: string): Promise<ApkHistorieNieuw[]> {
   try {
     if (!kenteken) {
@@ -137,18 +190,23 @@ export async function getApkHistorie(kenteken: string): Promise<ApkHistorieNieuw
     }
 
     // Verwerk de data
-    const processedData: ApkHistorieNieuw[] = data.map(keuring => {
-      // Voor gebreken zouden we de API endpoints kunnen aanroepen, maar voor nu laten we het leeg
-      // omdat dit extra API calls zou vereisen per keuring
-      const gebreken: string[] = [];
-
-      return {
+    const processedData: ApkHistorieNieuw[] = [];
+    
+    for (const keuring of data) {
+      // Haal gebreken op voor deze keuring
+      const gebreken = await getGebrekenVoorKeuring(normalizedKenteken, keuring.meld_datum_door_keuringsinstantie);
+      
+      processedData.push({
         datum_melding: formatDateToDDMMYYYY(keuring.meld_datum_door_keuringsinstantie),
         vervaldatum_keuring: formatDateToDDMMYYYY(keuring.vervaldatum_keuring),
         keuringsinstantie_naam: keuring.soort_erkenning_omschrijving || 'Onbekend',
-        gebreken: gebreken
-      };
-    });
+        soort_melding: keuring.soort_melding_ki_omschrijving || 'Onbekend',
+        tijd_melding: keuring.meld_tijd_door_keuringsinstantie ? 
+          `${keuring.meld_tijd_door_keuringsinstantie.substring(0,2)}:${keuring.meld_tijd_door_keuringsinstantie.substring(2,4)}` : 
+          '',
+        gebreken
+      });
+    }
 
     // Sorteer op datum (meest recent bovenaan)
     processedData.sort((a, b) => {
