@@ -5,7 +5,6 @@ import { useVehicleSearch, useVehicleBrands, useVehicleColors } from '@/hooks/us
 import { useAppStore } from '@/store/useAppStore';
 import { ApiAuthService as AuthService } from '@/lib/api-auth';
 import { generateCsvData } from '@/utils/dataProcessing';
-import { normalizeLicensePlate } from '@/utils/licensePlate';
 import Autocomplete from '@/components/Autocomplete';
 import type { SearchFilters } from '@/types/rdw';
 
