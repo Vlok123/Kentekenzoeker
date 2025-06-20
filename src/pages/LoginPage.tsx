@@ -119,8 +119,12 @@ export default function LoginPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">C</span>
+            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm">
+              <img 
+                src="/logo.png" 
+                alt="CarIntel Logo" 
+                className="h-6 w-auto object-contain"
+              />
             </div>
             <span className="font-semibold">CarIntel</span>
           </Link>

@@ -64,11 +64,15 @@ export default function HomePage() {
               transform: `translateY(${Math.min(scrollY * 0.2, 50)}px)`,
             }}
           >
-            {/* Main Title */}
+            {/* Banner Image */}
             <div className="mb-8 sm:mb-12">
-              <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-800 via-blue-600 to-blue-800 dark:from-white dark:via-blue-200 dark:to-purple-200 leading-none tracking-tighter mb-6">
-                Nederlandse kentekens zoeken
-              </h1>
+              <div className="max-w-4xl mx-auto mb-8">
+                <img 
+                  src="/Banner.png" 
+                  alt="CarIntel - Nederlandse Kentekens Zoeken" 
+                  className="w-full h-auto object-contain rounded-2xl shadow-2xl"
+                />
+              </div>
               <div className="text-lg sm:text-xl font-medium text-slate-600 dark:text-slate-300 mb-4">
                 <span className="text-blue-600 dark:text-blue-400 font-bold">www.carintel.nl</span>
               </div>

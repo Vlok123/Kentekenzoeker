@@ -65,8 +65,12 @@ export default function Layout({ children }: LayoutProps) {
               to="/" 
               className="flex items-center space-x-3 group"
             >
-              <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-2 rounded-xl group-hover:scale-110 transition-transform duration-300 shadow-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">C</span>
+              <div className="bg-white p-2 rounded-xl group-hover:scale-110 transition-transform duration-300 shadow-lg flex items-center justify-center">
+                <img 
+                  src="/logo.png" 
+                  alt="CarIntel Logo" 
+                  className="h-7 w-auto object-contain"
+                />
               </div>
               <div className="hidden sm:block">
                 <span className="text-xl font-bold text-slate-900 dark:text-white">CarIntel</span>
