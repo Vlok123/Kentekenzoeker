@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Car, Menu, X, User, LogOut, Home, Search, Zap, BookOpen, Shield, Sun, Moon } from 'lucide-react';
+import { Menu, X, User, LogOut, Home, Search, Zap, BookOpen, Shield, Sun, Moon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { useDarkMode } from '@/hooks/useDarkMode';
@@ -65,12 +65,12 @@ export default function Layout({ children }: LayoutProps) {
               to="/" 
               className="flex items-center space-x-3 group"
             >
-              <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-2 rounded-xl group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                <Car className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
+              <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-2 rounded-xl group-hover:scale-110 transition-transform duration-300 shadow-lg flex items-center justify-center">
+                <span className="text-white font-bold text-lg">C</span>
               </div>
               <div className="hidden sm:block">
-                <span className="text-xl font-bold text-slate-900 dark:text-white">Mijn Kenteken</span>
-                <span className="text-sm text-slate-600 dark:text-slate-300 block leading-none">Check</span>
+                <span className="text-xl font-bold text-slate-900 dark:text-white">CarIntel</span>
+                <span className="text-sm text-slate-600 dark:text-slate-300 block leading-none">Voertuig Info</span>
               </div>
             </Link>
 

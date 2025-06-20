@@ -2,7 +2,7 @@ User-agent: *
 Allow: /
 
 # Sitemap
-Sitemap: https://mijnkentekencheck.nl/sitemap.xml
+Sitemap: https://www.carintel.nl/sitemap.xml
 
 # Crawl-delay for respectful crawling
 Crawl-delay: 1

@@ -85,7 +85,7 @@ export default function LoginPage() {
         addNotification({
           type: 'success',
           title: 'Account aangemaakt',
-          message: `Welkom bij Mijn Kenteken Check, ${response.user.name || response.user.email}!`
+          message: `Welkom bij CarIntel, ${response.user.name || response.user.email}!`
         });
 
         navigate(from, { replace: true });
@@ -120,9 +120,9 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">M</span>
+              <span className="text-white font-bold">C</span>
             </div>
-            <span className="font-semibold">Mijn Kenteken Check</span>
+            <span className="font-semibold">CarIntel</span>
           </Link>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
             {isLogin ? 'Inloggen' : 'Account aanmaken'}

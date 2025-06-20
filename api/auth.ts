@@ -17,8 +17,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Enable CORS
   const origin = req.headers.origin;
   const allowedOrigins = [
-    'https://mijnkentekencheck.nl',
-    'https://www.mijnkentekencheck.nl',
+    'https://carintel.nl',
+    'https://www.carintel.nl',
     'http://localhost:5173',
     'http://localhost:3000'
   ];
@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (origin && allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   } else {
-    res.setHeader('Access-Control-Allow-Origin', 'https://www.mijnkentekencheck.nl');
+    res.setHeader('Access-Control-Allow-Origin', 'https://www.carintel.nl');
   }
   
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');

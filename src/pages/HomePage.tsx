@@ -38,10 +38,10 @@ export default function HomePage() {
   return (
     <>
       <SEOHead 
-        title="Mijn Kenteken Check - Nederlandse Kentekens Zoeken | Kenteken Opzoeken & Trekgewicht Check"
+        title="CarIntel - Nederlandse Kentekens Zoeken | Kenteken Opzoeken & Trekgewicht Check"
         description="Zoek alle Nederlandse voertuigen op kenteken, controleer trekgewicht en bekijk complete RDW data. 15+ miljoen voertuigen, 100% officiële RDW informatie, gratis en actueel."
-        keywords="kenteken check, kenteken opzoeken, voertuig informatie, trekgewicht check, APK, Nederlandse voertuigen, auto gegevens, kenteken zoeken, voertuig historie, RDW data"
-        canonicalUrl="https://mijnkentekencheck.nl/"
+        keywords="kenteken check, kenteken opzoeken, voertuig informatie, trekgewicht check, APK, Nederlandse voertuigen, auto gegevens, kenteken zoeken, voertuig historie, RDW data, CarIntel"
+        canonicalUrl="https://www.carintel.nl/"
       />
       
       <div className="min-h-screen gradient-bg relative overflow-hidden">
@@ -70,7 +70,7 @@ export default function HomePage() {
                 Nederlandse kentekens zoeken
               </h1>
               <div className="text-lg sm:text-xl font-medium text-slate-600 dark:text-slate-300 mb-4">
-                <span className="text-blue-600 dark:text-blue-400 font-bold">mijnkentekencheck.nl</span>
+                <span className="text-blue-600 dark:text-blue-400 font-bold">www.carintel.nl</span>
               </div>
             </div>
 
@@ -93,7 +93,7 @@ export default function HomePage() {
             {/* How it Works Section */}
             <div className="mb-16 max-w-4xl mx-auto">
               <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-8 text-center">
-                Hoe werkt Mijn Kenteken Check?
+                Hoe werkt CarIntel?
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

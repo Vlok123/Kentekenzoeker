@@ -1,6 +1,6 @@
-# RDW Voertuig Informatie App
+# CarIntel - Nederlandse Voertuig Informatie App
 
-Een moderne, responsive Nederlandse web-app die gebruik maakt van de open data API's van de RDW om voertuiginformatie te tonen en bewerken.
+Een moderne, responsive Nederlandse web-app die gebruik maakt van de open data API's van de RDW om voertuiginformatie te tonen en bewerken. Beschikbaar op www.carintel.nl
 
 ## 🚀 Features
 
