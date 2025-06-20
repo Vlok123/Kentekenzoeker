@@ -65,6 +65,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return await handleGetSavedVehicles(req, res);
       case 'cleanup-old-data':
         return await handleCleanupOldData(req, res);
+      case 'admin-debug':
+        return await handleAdminDebug(req, res);
       default:
         return res.status(400).json({ error: 'Invalid action' });
     }
@@ -318,6 +320,104 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
     }
   } catch (error) {
     return res.status(401).json({ error: 'Ongeldig token' });
+  }
+}
+
+async function handleAdminDebug(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Geen autorisatie token' });
+  }
+
+  const token = authHeader.substring(7);
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    
+    const client = await pool.connect();
+    try {
+      const userResult = await client.query(
+        'SELECT role FROM users WHERE id = $1',
+        [decoded.userId]
+      );
+
+      if (userResult.rows.length === 0 || userResult.rows[0].role !== 'admin') {
+        return res.status(403).json({ error: 'Geen admin rechten' });
+      }
+
+      // Get all tables info
+      const tablesResult = await client.query(`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public'
+        ORDER BY table_name
+      `);
+      
+      // Get activity logs details
+      const activityLogsResult = await client.query(`
+        SELECT 
+          action,
+          COUNT(*) as count,
+          MIN(created_at) as first_log,
+          MAX(created_at) as last_log
+        FROM activity_logs 
+        GROUP BY action
+        ORDER BY count DESC
+      `);
+
+      // Get recent activity logs
+      const recentLogsResult = await client.query(`
+        SELECT 
+          al.*,
+          u.email,
+          u.name
+        FROM activity_logs al
+        JOIN users u ON al.user_id = u.id
+        ORDER BY al.created_at DESC
+        LIMIT 10
+      `);
+
+      // Get users with activity counts
+      const usersActivityResult = await client.query(`
+        SELECT 
+          u.email,
+          u.name,
+          u.role,
+          u.created_at,
+          COUNT(al.id) as total_activities,
+          COUNT(CASE WHEN al.action = 'SEARCH' THEN 1 END) as search_count,
+          COUNT(CASE WHEN al.action = 'LOGIN' THEN 1 END) as login_count
+        FROM users u
+        LEFT JOIN activity_logs al ON u.id = al.user_id
+        GROUP BY u.id, u.email, u.name, u.role, u.created_at
+        ORDER BY total_activities DESC
+      `);
+
+      return res.status(200).json({
+        timestamp: new Date().toISOString(),
+        database_tables: tablesResult.rows.map(r => r.table_name),
+        activity_summary: activityLogsResult.rows,
+        recent_logs: recentLogsResult.rows,
+        users_with_activity: usersActivityResult.rows,
+        token_info: {
+          user_id: decoded.userId,
+          user_email: decoded.email,
+          user_role: decoded.role
+        }
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error: any) {
+    return res.status(500).json({ 
+      error: 'Debug query failed',
+      details: error.message,
+      stack: error.stack
+    });
   }
 }
 

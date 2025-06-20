@@ -84,6 +84,25 @@ export class ApiAuthService {
     return data;
   }
 
+  // Get admin debug information
+  static async getAdminDebug(token: string) {
+    const response = await fetch(`${API_BASE_URL}/auth?action=admin-debug`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to fetch admin debug info');
+    }
+
+    return data;
+  }
+
   // Get admin activity logs
   static async getAdminLogs(token: string, page: number = 1, limit: number = 50) {
     const response = await fetch(`${API_BASE_URL}/auth?action=admin-logs&page=${page}&limit=${limit}`, {
