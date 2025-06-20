@@ -5,7 +5,7 @@ import { useVehicleSearch, useVehicleBrands, useVehicleColors } from '@/hooks/us
 import { useAppStore } from '@/store/useAppStore';
 import { ApiAuthService as AuthService } from '@/lib/api-auth';
 import { generateCsvData } from '@/utils/dataProcessing';
-import { formatLicensePlate, normalizeLicensePlate } from '@/utils/licensePlate';
+import { normalizeLicensePlate } from '@/utils/licensePlate';
 import Autocomplete from '@/components/Autocomplete';
 import type { SearchFilters } from '@/types/rdw';
 
@@ -55,15 +55,9 @@ export default function ZoekPage() {
   const { data: colors = [] } = useVehicleColors();
 
   const handleInputChange = (value: string) => {
-    // If the input doesn't contain wildcards, try to format it as a license plate
-    if (!value.includes('*')) {
-      // For regular kenteken input, format it properly
-      const formatted = formatLicensePlate(value);
-      setQuery(formatted);
-    } else {
-      // For wildcard searches, keep as uppercase
-      setQuery(value.toUpperCase());
-    }
+    // Remove any dashes and make uppercase - we want kentekens WITHOUT dashes
+    const cleaned = value.replace(/-/g, '').toUpperCase();
+    setQuery(cleaned);
   };
 
   const handleSearch = async () => {
@@ -191,13 +185,13 @@ export default function ZoekPage() {
                 type="text"
                 value={query}
                 onChange={(e) => handleInputChange(e.target.value)}
-                placeholder="Kenteken of wildcard (bijv. S714NJ, S*J, *14*) - streepjes worden automatisch toegevoegd"
+                placeholder="Kenteken of wildcard (bijv. S714NJ, S*J, *14*) - zonder streepjes"
                 className="input w-full"
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                maxLength={10}
+                maxLength={8}
               />
               <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                💡 Tip: Je kunt kentekens invoeren met of zonder streepjes - ze worden automatisch geformatteerd
+                💡 Tip: Voer kentekens in zonder streepjes. Als je streepjes gebruikt worden ze automatisch weggehaald
               </div>
             </div>
             <button
