@@ -49,9 +49,26 @@ export default function LoginPage() {
           password: formData.password
         };
 
+        console.log('=== LOGIN ATTEMPT ===');
+        console.log('Email:', credentials.email);
+        console.log('Password length:', credentials.password.length);
+        
         const response = await AuthService.login(credentials);
+        
+        console.log('Login response:', response);
+        console.log('Token received:', response.token);
+        console.log('Token length:', response.token?.length);
+        console.log('User received:', response.user);
+        
         setUser(response.user);
         setToken(response.token);
+        
+        // Verify storage
+        setTimeout(() => {
+          console.log('After setting - Token in store:', useAppStore.getState().token);
+          console.log('After setting - User in store:', useAppStore.getState().user);
+          console.log('localStorage rdw-app-storage:', localStorage.getItem('rdw-app-storage'));
+        }, 100);
         
         addNotification({
           type: 'success',

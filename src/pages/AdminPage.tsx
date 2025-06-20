@@ -1,292 +1,364 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, RefreshCw, LogOut, AlertCircle } from 'lucide-react';
+import { 
+  ShieldCheck, 
+  Users, 
+  Search, 
+  LogOut, 
+  Activity,
+  Clock,
+  TrendingUp,
+  Calendar,
+  Database,
+  AlertCircle
+} from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
-import { ApiAuthService } from '@/lib/api-auth';
+import { fetchWithAuth } from '@/lib/api-auth';
+
+interface AdminStats {
+  totalUsers: number;
+  activeUsers: number;
+  totalSearches: number;
+  searchesToday: number;
+  popularSearches: Array<{ kenteken: string; count: number }>;
+  recentUsers: Array<{ email: string; created_at: string }>;
+  searchesByDay: Array<{ date: string; count: number }>;
+  savedVehicles: number;
+  databaseSize: string;
+}
 
 export default function AdminPage() {
-  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [basicStats, setBasicStats] = useState({
-    totalUsers: 0,
-    totalSearches: 0
-  });
-  
-  const { user, token, addNotification, logout } = useAppStore();
+
+  const { user, logout } = useAppStore();
   const navigate = useNavigate();
 
-  const clearStorageAndReload = () => {
-    console.log('Clearing all storage...');
-    localStorage.clear();
-    sessionStorage.clear();
-    window.location.reload();
-  };
-
-  const forceCompleteLogout = () => {
-    console.log('Force logout using store function...');
-    const { forceLogout } = useAppStore.getState();
-    forceLogout();
-    setTimeout(() => {
-      window.location.href = '/login';
-    }, 100);
-  };
-
-  const testConnection = async () => {
-    if (!token || !user || user.role !== 'admin') {
-      setError('Geen admin rechten of niet ingelogd');
-      setIsLoading(false);
-      return;
+  // Check if user is admin
+  useEffect(() => {
+    if (!user || user.role !== 'admin') {
+      navigate('/login');
     }
+  }, [user, navigate]);
 
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      console.log('=== TOKEN DEBUG INFO ===');
-      console.log('Token exists:', !!token);
-      console.log('Token length:', token?.length);
-      console.log('User role:', user?.role);
-      console.log('User email:', user?.email);
-      console.log('Token preview:', token?.substring(0, 50) + '...');
-      
-      // Try to decode token locally (just for debug)
+  // Fetch admin statistics
+  useEffect(() => {
+    const fetchStats = async () => {
       try {
-        const tokenParts = token.split('.');
-        if (tokenParts.length === 3) {
-          const payload = JSON.parse(atob(tokenParts[1]));
-          console.log('Token payload:', payload);
-          console.log('Token expires:', new Date(payload.exp * 1000));
-          console.log('Token is expired:', payload.exp < Date.now() / 1000);
-          console.log('Token issued at:', new Date(payload.iat * 1000));
-          console.log('Token age (minutes):', (Date.now() / 1000 - payload.iat) / 60);
-        }
-      } catch (e) {
-        console.log('Could not decode token:', e);
+        setLoading(true);
+        const data = await fetchWithAuth('/auth?action=admin-stats');
+        setStats(data);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching admin stats:', err);
+        setError('Kon statistieken niet laden');
+      } finally {
+        setLoading(false);
       }
-      
-      console.log('=== STORAGE CHECK ===');
-      console.log('localStorage items:', Object.keys(localStorage));
-      console.log('sessionStorage items:', Object.keys(sessionStorage));
-      
-      // Check current time for debugging
-      console.log('Current time:', new Date().toISOString());
+    };
 
-      // Use ApiAuthService for consistent API calls
-      const data = await ApiAuthService.getAdminStats(token);
-      console.log('Success! Data received:', data);
-      
-      setBasicStats({
-        totalUsers: data.totalUsers || 0,
-        totalSearches: data.totalSearchCount || 0
-      });
-
-      addNotification({
-        type: 'success',
-        title: 'Verbonden!',
-        message: 'Admin data succesvol geladen.'
-      });
-    } catch (error: any) {
-      console.error('Connection test failed:', error);
-      setError(error.message || 'Onbekende fout');
-      
-      addNotification({
-        type: 'error',
-        title: 'Verbinding mislukt',
-        message: error.message || 'Kan geen verbinding maken met admin API'
-      });
-    } finally {
-      setIsLoading(false);
+    if (user?.role === 'admin') {
+      fetchStats();
     }
-  };
+  }, [user]);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
-    addNotification({
-      type: 'info',
-      title: 'Uitgelogd',
-      message: 'Je bent uitgelogd.'
-    });
   };
 
-  useEffect(() => {
-    testConnection();
-  }, []);
-
-  // Check admin access
   if (!user || user.role !== 'admin') {
-    return (
-      <div className="min-h-screen bg-gradient-bg flex items-center justify-center p-4">
-        <div className="text-center">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h1 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
-            Geen toegang
-          </h1>
-          <p className="text-slate-600 dark:text-slate-400 mb-4">
-            Je hebt geen admin rechten om deze pagina te bekijken.
-          </p>
-          <button
-            onClick={() => navigate('/login')}
-            className="btn btn-primary"
-          >
-            Ga naar login
-          </button>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
+      {/* Header */}
       <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
-            Admin Dashboard (Test)
-          </h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Eenvoudige admin pagina voor verbinding testen
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={testConnection}
-            disabled={isLoading}
-            className="btn btn-secondary"
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Test Verbinding
-          </button>
-          <button
-            onClick={clearStorageAndReload}
-            className="btn btn-secondary"
-          >
-            <AlertCircle className="w-4 h-4 mr-2" />
-            Wis Storage
-          </button>
-          <button
-            onClick={forceCompleteLogout}
-            className="btn btn-secondary"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Force Logout
-          </button>
-          <button
-            onClick={handleLogout}
-            className="btn btn-danger"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Uitloggen
-          </button>
-        </div>
-      </div>
-
-      {/* Debug Info */}
-      <div className="card mb-6">
-        <div className="card-header">
-          <h2 className="text-lg font-semibold">🔧 Debug Informatie</h2>
-        </div>
-        <div className="card-content">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <p><strong>Gebruiker:</strong> {user?.email}</p>
-              <p><strong>Rol:</strong> {user?.role}</p>
-              <p><strong>Token aanwezig:</strong> {token ? 'Ja' : 'Nee'}</p>
-            </div>
-            <div>
-              <p><strong>Token lengte:</strong> {token?.length || 0}</p>
-              <p><strong>Status:</strong> {isLoading ? 'Laden...' : error ? 'Fout' : 'OK'}</p>
-              <p><strong>Tijd:</strong> {new Date().toLocaleTimeString()}</p>
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+            <ShieldCheck className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+              Admin Dashboard
+            </h1>
+            <p className="text-slate-600 dark:text-slate-400">
+              Welkom terug, {user.name || user.email}
+            </p>
           </div>
         </div>
+        
+        <button
+          onClick={handleLogout}
+          className="btn btn-secondary"
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Uitloggen
+        </button>
       </div>
 
-      {/* Loading State */}
-      {isLoading && (
+      {/* Error Alert */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+          <p className="text-red-700 dark:text-red-300">{error}</p>
+        </div>
+      )}
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Total Users */}
         <div className="card">
           <div className="card-content">
-            <div className="text-center py-8">
-              <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-500" />
-              <p className="text-slate-600 dark:text-slate-400">Verbinding testen...</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Error State */}
-      {error && (
-        <div className="card border-red-200 dark:border-red-800 mb-6">
-          <div className="card-content">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <h3 className="font-semibold text-red-700 dark:text-red-300 mb-1">
-                  Verbinding Mislukt
-                </h3>
-                <p className="text-red-600 dark:text-red-400 mb-3">{error}</p>
-                <button
-                  onClick={testConnection}
-                  className="btn btn-sm btn-secondary"
-                >
-                  Opnieuw proberen
-                </button>
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                Totaal
+              </span>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Success State */}
-      {!isLoading && !error && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="card">
-            <div className="card-content">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Totaal Gebruikers</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {basicStats.totalUsers}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="card-content">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                  <RefreshCw className="w-6 h-6 text-green-600 dark:text-green-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Totaal Zoekopdrachten</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {basicStats.totalSearches}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Success Message */}
-      {!isLoading && !error && (
-        <div className="card mt-6 border-green-200 dark:border-green-800">
-          <div className="card-content">
-            <div className="text-center py-4">
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Users className="w-6 h-6 text-green-600 dark:text-green-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-green-700 dark:text-green-300 mb-1">
-                Verbinding Succesvol!
-              </h3>
-              <p className="text-green-600 dark:text-green-400">
-                Admin API werkt correct. Je kunt nu de volledige admin functionaliteit toevoegen.
+            <div>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                {loading ? '...' : stats?.totalUsers || 0}
               </p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                Geregistreerde gebruikers
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Active Users */}
+        <div className="card">
+          <div className="card-content">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                <Activity className="w-6 h-6 text-green-600 dark:text-green-400" />
+              </div>
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                Deze week
+              </span>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                {loading ? '...' : stats?.activeUsers || 0}
+              </p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                Actieve gebruikers
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Total Searches */}
+        <div className="card">
+          <div className="card-content">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                <Search className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              </div>
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                Totaal
+              </span>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                {loading ? '...' : stats?.totalSearches || 0}
+              </p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                Zoekopdrachten
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Searches Today */}
+        <div className="card">
+          <div className="card-content">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                <TrendingUp className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                Vandaag
+              </span>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                {loading ? '...' : stats?.searchesToday || 0}
+              </p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                Zoekopdrachten vandaag
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Popular Searches & Recent Users */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Popular Searches */}
+        <div className="card">
+          <div className="card-header">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Search className="w-5 h-5" />
+              Populaire Kentekens
+            </h2>
+          </div>
+          <div className="card-content">
+            {loading ? (
+              <p className="text-slate-500">Laden...</p>
+            ) : stats?.popularSearches && stats.popularSearches.length > 0 ? (
+              <div className="space-y-3">
+                {stats.popularSearches.slice(0, 5).map((search, index) => (
+                  <div key={index} className="flex items-center justify-between py-2 border-b border-slate-200 dark:border-slate-700 last:border-0">
+                    <span className="font-mono font-medium text-slate-900 dark:text-slate-100">
+                      {search.kenteken}
+                    </span>
+                    <span className="text-sm text-slate-600 dark:text-slate-400">
+                      {search.count} keer
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-slate-500">Geen gegevens beschikbaar</p>
+            )}
+          </div>
+        </div>
+
+        {/* Recent Users */}
+        <div className="card">
+          <div className="card-header">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Clock className="w-5 h-5" />
+              Recente Gebruikers
+            </h2>
+          </div>
+          <div className="card-content">
+            {loading ? (
+              <p className="text-slate-500">Laden...</p>
+            ) : stats?.recentUsers && stats.recentUsers.length > 0 ? (
+              <div className="space-y-3">
+                {stats.recentUsers.slice(0, 5).map((user, index) => (
+                  <div key={index} className="flex items-center justify-between py-2 border-b border-slate-200 dark:border-slate-700 last:border-0">
+                    <span className="text-sm text-slate-900 dark:text-slate-100">
+                      {user.email}
+                    </span>
+                    <span className="text-sm text-slate-600 dark:text-slate-400">
+                      {new Date(user.created_at).toLocaleDateString('nl-NL')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-slate-500">Geen recente aanmeldingen</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* System Info */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Database Stats */}
+        <div className="card">
+          <div className="card-header">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Database className="w-5 h-5" />
+              Database Statistieken
+            </h2>
+          </div>
+          <div className="card-content">
+            <div className="space-y-3">
+              <div className="flex justify-between py-2 border-b border-slate-200 dark:border-slate-700">
+                <span className="text-slate-600 dark:text-slate-400">Opgeslagen voertuigen</span>
+                <span className="font-medium">{loading ? '...' : stats?.savedVehicles || 0}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-slate-200 dark:border-slate-700">
+                <span className="text-slate-600 dark:text-slate-400">Database grootte</span>
+                <span className="font-medium">{loading ? '...' : stats?.databaseSize || 'Onbekend'}</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-slate-600 dark:text-slate-400">API Status</span>
+                <span className="font-medium text-green-600 dark:text-green-400">Actief</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* User Info */}
+        <div className="card">
+          <div className="card-header">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              Account Informatie
+            </h2>
+          </div>
+          <div className="card-content">
+            <div className="space-y-3">
+              <div className="flex justify-between py-2 border-b border-slate-200 dark:border-slate-700">
+                <span className="text-slate-600 dark:text-slate-400">Email</span>
+                <span className="font-medium">{user.email}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-slate-200 dark:border-slate-700">
+                <span className="text-slate-600 dark:text-slate-400">Rol</span>
+                <span className="font-medium capitalize">{user.role}</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-slate-600 dark:text-slate-400">Account aangemaakt</span>
+                <span className="font-medium">
+                  {new Date(user.created_at).toLocaleDateString('nl-NL', { 
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                  })}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Search Activity Chart */}
+      {stats?.searchesByDay && stats.searchesByDay.length > 0 && (
+        <div className="mt-8 card">
+          <div className="card-header">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              Zoekactiviteit (Laatste 7 dagen)
+            </h2>
+          </div>
+          <div className="card-content">
+            <div className="h-64 flex items-end justify-between gap-2">
+              {stats.searchesByDay.slice(0, 7).reverse().map((day, index) => {
+                const maxCount = Math.max(...stats.searchesByDay.map(d => Number(d.count)));
+                const percentage = (Number(day.count) / maxCount) * 100;
+                const date = new Date(day.date);
+                
+                return (
+                  <div key={index} className="flex-1 flex flex-col items-center">
+                    <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-t relative">
+                      <div 
+                        className="bg-blue-500 dark:bg-blue-400 rounded-t transition-all duration-500"
+                        style={{ height: `${percentage * 2}px` }}
+                      >
+                        <span className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                          {day.count}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+                      {date.toLocaleDateString('nl-NL', { 
+                        day: 'numeric',
+                        month: 'short'
+                      })}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

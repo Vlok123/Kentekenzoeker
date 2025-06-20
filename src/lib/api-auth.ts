@@ -1,8 +1,35 @@
 import type { User, LoginCredentials, RegisterData, AuthResponse } from '@/types/auth';
 
+// Use local API in development to avoid CORS issues
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
   ? '/api' 
-  : 'https://carintel.nl/api';
+  : '/api'; // Use local API in development
+
+// Helper function for authenticated requests
+export async function fetchWithAuth(url: string, options: RequestInit = {}) {
+  const token = localStorage.getItem('rdw-auth-token');
+  
+  if (!token) {
+    throw new Error('Geen autorisatie token');
+  }
+
+  const response = await fetch(`${API_BASE_URL}${url}`, {
+    ...options,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Request failed');
+  }
+
+  return data;
+}
 
 export class ApiAuthService {
   // Login user

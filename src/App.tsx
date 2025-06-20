@@ -12,6 +12,8 @@ import LoginPage from '@/pages/LoginPage';
 import DashboardPage from '@/pages/DashboardPage';
 import MijnOpgeslagenPage from '@/pages/MijnOpgeslagenPage';
 import AdminPage from '@/pages/AdminPage';
+import SetupPage from '@/pages/SetupPage';
+
 
 // Layout wrapper that uses Outlet
 function LayoutWrapper() {
@@ -61,6 +63,7 @@ function App() {
       <Routes>
         {/* Login route without layout */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/setup" element={<SetupPage />} />
         
         {/* Routes with layout */}
         <Route path="/" element={<LayoutWrapper />}>
@@ -74,7 +77,7 @@ function App() {
             path="dashboard" 
             element={user ? <DashboardPage /> : <Navigate to="/login" replace />} 
           />
-          <Route 
+                    <Route 
             path="mijn-opgeslagen" 
             element={user ? <MijnOpgeslagenPage /> : <Navigate to="/login" replace />} 
           />

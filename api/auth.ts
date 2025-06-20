@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 const pool = new Pool({
-  connectionString: 'postgresql://neondb_owner:npg_p1IJPygusA8w@ep-patient-mouse-a9tzeizd-pooler.gwc.azure.neon.tech/neondb?sslmode=require',
+  connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_p1IJPygusA8w@ep-patient-mouse-a9tzeizd-pooler.gwc.azure.neon.tech/neondb?sslmode=require',
   ssl: {
     rejectUnauthorized: false
   }
@@ -93,6 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(200).json(debugEnvironment());
       case 'force-logout-all':
         return await handleForceLogoutAll(req, res);
+
       default:
         return res.status(400).json({ error: 'Invalid action' });
     }
@@ -293,123 +294,111 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
         return res.status(403).json({ error: 'Geen admin rechten' });
       }
 
-      // Get statistics
+      // Get total users
       const usersResult = await client.query('SELECT COUNT(*) as count FROM users');
       const totalUsers = parseInt(usersResult.rows[0].count);
 
-      const searchesResult = await client.query('SELECT COUNT(*) as count FROM saved_searches');
-      const totalSavedSearches = parseInt(searchesResult.rows[0].count);
-
-      const vehiclesResult = await client.query('SELECT COUNT(*) as count FROM saved_vehicles');
-      const totalSavedVehicles = parseInt(vehiclesResult.rows[0].count);
-
-      // Get total search count from activity logs
-      const totalSearchesResult = await client.query(`
-        SELECT COUNT(*) as count 
+      // Get active users (last 7 days)
+      const activeUsersResult = await client.query(`
+        SELECT COUNT(DISTINCT user_id) as count 
         FROM activity_logs 
-        WHERE action = 'SEARCH'
+        WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
       `);
-      const totalSearchCount = parseInt(totalSearchesResult.rows[0].count);
+      const activeUsers = parseInt(activeUsersResult.rows[0].count);
 
-      // Get anonymous search statistics
-      const anonymousSearchesResult = await client.query(`
-        SELECT COUNT(*) as count 
-        FROM anonymous_searches
-      `);
-      const totalAnonymousSearches = parseInt(anonymousSearchesResult.rows[0].count);
-
-      // Get anonymous searches by type
-      const anonymousSearchesByTypeResult = await client.query(`
+      // Get total searches (both logged in and anonymous)
+      const totalSearchesResult = await client.query(`
         SELECT 
-          search_type,
-          COUNT(*) as count,
-          AVG(result_count) as avg_results
-        FROM anonymous_searches 
-        GROUP BY search_type
+          (SELECT COUNT(*) FROM activity_logs WHERE action = 'SEARCH') + 
+          (SELECT COUNT(*) FROM anonymous_searches) as count
+      `);
+      const totalSearches = parseInt(totalSearchesResult.rows[0].count);
+
+      // Get searches today
+      const searchesTodayResult = await client.query(`
+        SELECT 
+          (SELECT COUNT(*) FROM activity_logs WHERE action = 'SEARCH' AND DATE(created_at) = CURRENT_DATE) + 
+          (SELECT COUNT(*) FROM anonymous_searches WHERE DATE(created_at) = CURRENT_DATE) as count
+      `);
+      const searchesToday = parseInt(searchesTodayResult.rows[0].count);
+
+      // Get popular searches (combining kentekens from both sources)
+      const popularSearchesResult = await client.query(`
+        WITH all_searches AS (
+          SELECT search_query as kenteken FROM anonymous_searches 
+          WHERE search_type = 'KENTEKEN' AND search_query IS NOT NULL
+          UNION ALL
+          SELECT details->>'searchQuery' as kenteken FROM activity_logs 
+          WHERE action = 'SEARCH' AND details->>'searchQuery' IS NOT NULL
+        )
+        SELECT 
+          UPPER(kenteken) as kenteken,
+          COUNT(*) as count
+        FROM all_searches
+        WHERE kenteken != ''
+        GROUP BY UPPER(kenteken)
         ORDER BY count DESC
+        LIMIT 10
       `);
-      const anonymousSearchesByType = anonymousSearchesByTypeResult.rows;
+      const popularSearches = popularSearchesResult.rows;
 
-      // Get daily search statistics (last 30 days)
-      const dailySearchStatsResult = await client.query(`
-        SELECT 
-          DATE(created_at) as search_date,
-          COUNT(*) as anonymous_searches,
-          COUNT(DISTINCT ip_address) as unique_ips
-        FROM anonymous_searches 
-        WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
-        GROUP BY DATE(created_at)
-        ORDER BY search_date DESC
-        LIMIT 30
-      `);
-      const dailySearchStats = dailySearchStatsResult.rows;
-
-      // Get top search queries (anonymous)
-      const topSearchQueriesResult = await client.query(`
-        SELECT 
-          search_query,
-          COUNT(*) as search_count,
-          search_type
-        FROM anonymous_searches 
-        WHERE search_query IS NOT NULL 
-        AND LENGTH(search_query) > 0
-        GROUP BY search_query, search_type
-        ORDER BY search_count DESC
-        LIMIT 50
-      `);
-      const topSearchQueries = topSearchQueriesResult.rows;
-
-      // Get search count per user
-      const searchesByUserResult = await client.query(`
-        SELECT 
-          u.email,
-          u.name,
-          COUNT(al.id) as search_count
-        FROM users u
-        LEFT JOIN activity_logs al ON u.id = al.user_id AND al.action = 'SEARCH'
-        GROUP BY u.id, u.email, u.name
-        ORDER BY search_count DESC
-        LIMIT 20
-      `);
-      const searchesByUser = searchesByUserResult.rows;
-
+      // Get recent users
       const recentUsersResult = await client.query(`
-        SELECT id, email, name, role, created_at 
+        SELECT email, created_at 
         FROM users 
         ORDER BY created_at DESC 
-        LIMIT 50
+        LIMIT 5
       `);
       const recentUsers = recentUsersResult.rows;
 
-      // Get hourly search pattern
-      const hourlySearchPatternResult = await client.query(`
+      // Get searches by day (last 7 days)
+      const searchesByDayResult = await client.query(`
+        WITH daily_counts AS (
+          SELECT DATE(created_at) as date, COUNT(*) as count 
+          FROM activity_logs 
+          WHERE action = 'SEARCH' AND created_at >= CURRENT_DATE - INTERVAL '7 days'
+          GROUP BY DATE(created_at)
+          UNION ALL
+          SELECT DATE(created_at) as date, COUNT(*) as count 
+          FROM anonymous_searches 
+          WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+          GROUP BY DATE(created_at)
+        )
         SELECT 
-          EXTRACT(HOUR FROM created_at) as hour,
-          COUNT(*) as search_count
-        FROM anonymous_searches 
-        WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
-        GROUP BY EXTRACT(HOUR FROM created_at)
-        ORDER BY hour
+          date,
+          SUM(count) as count
+        FROM daily_counts
+        GROUP BY date
+        ORDER BY date DESC
       `);
-      const hourlySearchPattern = hourlySearchPatternResult.rows;
+      const searchesByDay = searchesByDayResult.rows;
+
+      // Get saved vehicles count
+      const savedVehiclesResult = await client.query('SELECT COUNT(*) as count FROM saved_vehicles');
+      const savedVehicles = parseInt(savedVehiclesResult.rows[0].count);
+
+      // Get database size
+      const dbSizeResult = await client.query(`
+        SELECT pg_size_pretty(pg_database_size(current_database())) as size
+      `);
+      const databaseSize = dbSizeResult.rows[0].size;
 
       return res.status(200).json({
         totalUsers,
-        totalSavedSearches,
-        totalSavedVehicles,
-        totalSearchCount,
-        totalAnonymousSearches,
-        anonymousSearchesByType,
-        dailySearchStats,
-        topSearchQueries,
-        searchesByUser,
+        activeUsers,
+        totalSearches,
+        searchesToday,
+        popularSearches,
         recentUsers,
-        hourlySearchPattern
+        searchesByDay,
+        savedVehicles,
+        databaseSize
       });
     } finally {
       client.release();
     }
   } catch (error) {
+    console.error('Admin stats error:', error);
     return res.status(401).json({ error: 'Ongeldig token' });
   }
 }
@@ -959,4 +948,6 @@ async function handleLogAnonymousSearch(req: VercelRequest, res: VercelResponse)
   } finally {
     client.release();
   }
-} 
+}
+
+ 
