@@ -160,6 +160,30 @@ export default function AdminPage() {
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
       
+      // Check if it's a token error - auto logout
+      if (error.message?.includes('token') || error.message?.includes('Token') || 
+          error.message?.includes('Ongeldig') || error.message?.includes('401')) {
+        console.log('Token error detected - forcing logout');
+        
+        addNotification({
+          type: 'warning',
+          title: 'Sessie verlopen',
+          message: 'Je wordt automatisch uitgelogd vanwege een ongeldige token. Log opnieuw in.',
+          duration: 8000
+        });
+        
+        // Clear all stored data and logout
+        localStorage.removeItem('rdw-app-storage');
+        logout();
+        
+        // Redirect to login after a short delay
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+        
+        return;
+      }
+      
       setError(error.message || 'Onbekende fout bij laden van admin data');
       
       // Add detailed error info to debug
@@ -201,6 +225,28 @@ export default function AdminPage() {
       title: 'LocalStorage gewist',
       message: 'Alle lokale data is gewist. Herlaad de pagina.'
     });
+  };
+
+  const forceLogoutAndClear = () => {
+    // Clear all possible storage
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // Force logout
+    logout();
+    
+    addNotification({
+      type: 'success',
+      title: 'Geforceerd uitgelogd',
+      message: 'Alle data gewist. Je wordt doorgestuurd naar login.',
+      duration: 3000
+    });
+    
+    // Navigate to login
+    setTimeout(() => {
+      navigate('/login');
+      window.location.reload(); // Force complete reload
+    }, 1000);
   };
 
   useEffect(() => {
@@ -323,12 +369,20 @@ export default function AdminPage() {
                   Fout bij laden van admin data
                 </h3>
                 <p className="text-red-600 dark:text-red-400 mb-3">{error}</p>
-                <button
-                  onClick={handleRetry}
-                  className="btn btn-sm btn-danger"
-                >
-                  Opnieuw proberen
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleRetry}
+                    className="btn btn-sm btn-secondary"
+                  >
+                    Opnieuw proberen
+                  </button>
+                  <button
+                    onClick={forceLogoutAndClear}
+                    className="btn btn-sm btn-danger"
+                  >
+                    Force Logout & Clear
+                  </button>
+                </div>
               </div>
             </div>
           </div>
