@@ -119,11 +119,12 @@ export default function LoginPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm">
+            <div className="w-8 h-8 bg-white/90 backdrop-blur-sm rounded-lg flex items-center justify-center shadow-sm border border-slate-200/50">
               <img 
                 src="/logo.png" 
                 alt="CarIntel Logo" 
-                className="h-6 w-auto object-contain"
+                className="h-6 w-auto object-contain mix-blend-multiply"
+                style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))' }}
               />
             </div>
             <span className="font-semibold">CarIntel</span>

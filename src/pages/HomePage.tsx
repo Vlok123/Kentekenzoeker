@@ -70,7 +70,11 @@ export default function HomePage() {
                 <img 
                   src="/Banner.png" 
                   alt="CarIntel - Nederlandse Kentekens Zoeken" 
-                  className="w-full h-auto object-contain rounded-2xl shadow-2xl"
+                  className="w-full h-auto object-contain"
+                  style={{ 
+                    filter: 'drop-shadow(0 8px 32px rgba(59, 130, 246, 0.3))',
+                    maxHeight: '300px'
+                  }}
                 />
               </div>
               <div className="text-lg sm:text-xl font-medium text-slate-600 dark:text-slate-300 mb-4">

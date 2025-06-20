@@ -65,11 +65,12 @@ export default function Layout({ children }: LayoutProps) {
               to="/" 
               className="flex items-center space-x-3 group"
             >
-              <div className="bg-white p-2 rounded-xl group-hover:scale-110 transition-transform duration-300 shadow-lg flex items-center justify-center">
+              <div className="bg-white/90 backdrop-blur-sm p-2 rounded-xl group-hover:scale-110 transition-transform duration-300 shadow-lg flex items-center justify-center border border-slate-200/50 dark:border-slate-700/50">
                 <img 
                   src="/logo.png" 
                   alt="CarIntel Logo" 
-                  className="h-7 w-auto object-contain"
+                  className="h-7 w-auto object-contain mix-blend-multiply dark:mix-blend-normal dark:brightness-110"
+                  style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))' }}
                 />
               </div>
               <div className="hidden sm:block">
