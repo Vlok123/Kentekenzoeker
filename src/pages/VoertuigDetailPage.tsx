@@ -12,7 +12,7 @@ import {
   Download,
   Star,
   Shield,
-  FileText,
+
   Settings,
   TrendingUp,
   Zap,
@@ -20,7 +20,7 @@ import {
   DollarSign,
   History
 } from 'lucide-react';
-import { useCompleteVehicleData, useVehicleRecalls, useCompleteRdwData } from '@/hooks/useRdw';
+import { useCompleteVehicleData, useVehicleRecalls } from '@/hooks/useRdw';
 import { formatDate } from '@/utils/dataProcessing';
 import { useAppStore } from '@/store/useAppStore';
 
