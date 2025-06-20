@@ -515,6 +515,12 @@ export function useVehicleByLicensePlate(kenteken: string, enabled = true) {
       // Add to recent searches
       addRecentSearch(kenteken);
 
+      // Log anonymous search if user is not logged in
+      const { user } = useAppStore.getState();
+      if (!user) {
+        ApiAuthService.logAnonymousSearch(kenteken, 'kenteken', {}, 1);
+      }
+
       return vehicle;
     },
     enabled: enabled && !!kenteken,
@@ -535,7 +541,7 @@ export function useVehicleByLicensePlate(kenteken: string, enabled = true) {
  * Hook voor het zoeken van voertuigen met wildcards en filters
  */
 export function useVehicleSearch(query: string, filters: SearchFilters, enabled = true) {
-  const { addNotification, token } = useAppStore();
+  const { addNotification, token, user } = useAppStore();
 
   return useQuery({
     queryKey: ['vehicleSearch', query, filters],
@@ -720,9 +726,26 @@ export function useVehicleSearch(query: string, filters: SearchFilters, enabled 
           console.warn('Failed to log search activity:', error);
           // Don't show error to user - search logging is not critical
         }
+      } else if (!user && (hasQuery || hasFilters)) {
+        // Log anonymous search for users without account
+        try {
+          const searchType = query?.includes('*') ? 'wildcard' : 'kenteken';
+          console.log('Logging anonymous search activity:', { 
+            query: query || '', 
+            filters, 
+            resultCount: vehicles.length,
+            searchType,
+            user: 'anonymous'
+          });
+          ApiAuthService.logAnonymousSearch(query || '', searchType, filters, vehicles.length);
+          console.log('Anonymous search activity logged successfully');
+        } catch (error) {
+          console.warn('Failed to log anonymous search activity:', error);
+        }
       } else {
         console.log('Search logging skipped:', { 
           hasToken: !!token, 
+          hasUser: !!user,
           hasQuery, 
           hasFilters,
           query: query || 'empty',
@@ -811,7 +834,7 @@ export function useVehicleRecalls(kenteken: string, enabled = true) {
  * Hook voor trekgewicht controle
  */
 export function useTrekgewichtCheck() {
-  const { addNotification } = useAppStore();
+  const { addNotification, user, token } = useAppStore();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -870,13 +893,28 @@ export function useTrekgewichtCheck() {
         rdwData: vehicle,
       };
     },
-    onSuccess: (result) => {
+    onSuccess: (result, variables) => {
       const type = result.toegestaan ? 'success' : 'warning';
       addNotification({
         type,
         title: 'Trekgewicht controle voltooid',
         message: result.message,
       });
+
+      // Log trekgewicht check for anonymous users
+      if (!user) {
+        try {
+          const searchQuery = `${variables.kenteken} - ${variables.gewensteAanhangergewicht}kg ${variables.heeftRemmen ? 'geremd' : 'ongeremd'}`;
+          ApiAuthService.logAnonymousSearch(searchQuery, 'trekgewicht', {
+            kenteken: variables.kenteken,
+            gewensteAanhangergewicht: variables.gewensteAanhangergewicht,
+            heeftRemmen: variables.heeftRemmen,
+            toegestaan: result.toegestaan
+          }, result.toegestaan ? 1 : 0);
+        } catch (error) {
+          console.warn('Failed to log anonymous trekgewicht check:', error);
+        }
+      }
     },
     onError: (error: Error) => {
       addNotification({

@@ -274,4 +274,37 @@ export class ApiAuthService {
 
     return data;
   }
+
+  // Log anonymous search (for users without account)
+  static async logAnonymousSearch(searchQuery: string, searchType: string, searchFilters?: any, resultCount?: number) {
+    try {
+      // Generate a simple session ID if not available
+      let sessionId = localStorage.getItem('carintel-session-id');
+      if (!sessionId) {
+        sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        localStorage.setItem('carintel-session-id', sessionId);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/auth?action=log-anonymous-search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          searchQuery,
+          searchType,
+          searchFilters,
+          resultCount: resultCount || 0,
+          sessionId
+        }),
+      });
+
+      // Don't throw errors for logging failures to avoid breaking the search flow
+      if (!response.ok) {
+        console.warn('Failed to log anonymous search activity');
+      }
+    } catch (error) {
+      console.warn('Failed to log anonymous search activity:', error);
+    }
+  }
 } 

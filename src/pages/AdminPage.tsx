@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, FileText, HardDrive, RefreshCw, AlertCircle, LogOut, Info, Search } from 'lucide-react';
+import { Users, FileText, HardDrive, RefreshCw, AlertCircle, LogOut, Info, Search, Eye, Clock, TrendingUp, BarChart3, Activity, Globe, Database } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { ApiAuthService } from '@/lib/api-auth';
 
@@ -9,12 +9,32 @@ interface AdminStats {
   totalSavedSearches: number;
   totalSavedVehicles: number;
   totalSearchCount: number;
+  totalAnonymousSearches: number;
+  anonymousSearchesByType: Array<{
+    search_type: string;
+    count: number;
+    avg_results: number;
+  }>;
+  dailySearchStats: Array<{
+    search_date: string;
+    anonymous_searches: number;
+    unique_ips: number;
+  }>;
+  topSearchQueries: Array<{
+    search_query: string;
+    search_count: number;
+    search_type: string;
+  }>;
   searchesByUser: Array<{
     email: string;
     name: string;
     search_count: number;
   }>;
   recentUsers: any[];
+  hourlySearchPattern: Array<{
+    hour: number;
+    search_count: number;
+  }>;
 }
 
 export default function AdminPage() {
@@ -23,8 +43,13 @@ export default function AdminPage() {
     totalSavedSearches: 0,
     totalSavedVehicles: 0,
     totalSearchCount: 0,
+    totalAnonymousSearches: 0,
+    anonymousSearchesByType: [],
+    dailySearchStats: [],
+    topSearchQueries: [],
     searchesByUser: [],
-    recentUsers: []
+    recentUsers: [],
+    hourlySearchPattern: []
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -317,7 +342,7 @@ export default function AdminPage() {
           {activeTab === 'overview' && (
             <>
               {/* Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
                 <div className="card">
                   <div className="card-content">
                     <div className="flex items-center gap-3">
@@ -341,9 +366,25 @@ export default function AdminPage() {
                         <Search className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
                       </div>
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Totaal Zoekopdrachten</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Account Zoekopdrachten</p>
                         <p className="text-2xl font-bold text-slate-900 dark:text-white">
                           {stats.totalSearchCount}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card">
+                  <div className="card-content">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                        <Eye className="w-6 h-6 text-green-600 dark:text-green-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Anonieme Zoekopdrachten</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                          {stats.totalAnonymousSearches}
                         </p>
                       </div>
                     </div>
@@ -456,6 +497,211 @@ export default function AdminPage() {
                                   ? `${((user.search_count / stats.totalSearchCount) * 100).toFixed(1)}%`
                                   : '0%'
                                 }
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Anonymous Search Statistics */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div className="card">
+                  <div className="card-header">
+                    <h2 className="text-xl font-semibold">👤 Anonieme Zoekopdrachten per Type</h2>
+                    <p className="text-slate-600 dark:text-slate-400">
+                      Overzicht van zoekopdrachten zonder account
+                    </p>
+                  </div>
+                  <div className="card-content">
+                    {stats.anonymousSearchesByType.length === 0 ? (
+                      <div className="text-center py-8">
+                        <Eye className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                          Nog geen anonieme zoekopdrachten
+                        </h3>
+                        <p className="text-slate-500 dark:text-slate-400">
+                          Wacht tot bezoekers zonder account gaan zoeken.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {stats.anonymousSearchesByType.map((type, index) => (
+                          <div key={index} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <div className={`p-2 rounded-lg ${
+                                type.search_type === 'kenteken' ? 'bg-blue-100 dark:bg-blue-900/30' :
+                                type.search_type === 'wildcard' ? 'bg-green-100 dark:bg-green-900/30' :
+                                'bg-purple-100 dark:bg-purple-900/30'
+                              }`}>
+                                {type.search_type === 'kenteken' ? <Search className="w-5 h-5 text-blue-600 dark:text-blue-400" /> :
+                                 type.search_type === 'wildcard' ? <Globe className="w-5 h-5 text-green-600 dark:text-green-400" /> :
+                                 <Activity className="w-5 h-5 text-purple-600 dark:text-purple-400" />}
+                              </div>
+                              <div>
+                                <p className="font-medium text-slate-900 dark:text-white capitalize">
+                                  {type.search_type}
+                                </p>
+                                <p className="text-sm text-slate-600 dark:text-slate-400">
+                                  Gem. {Math.round(type.avg_results)} resultaten
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {type.count}
+                              </p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">
+                                zoekopdrachten
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="card">
+                  <div className="card-header">
+                    <h2 className="text-xl font-semibold">⏰ Zoekpatroon per Uur</h2>
+                    <p className="text-slate-600 dark:text-slate-400">
+                      Activiteit gedurende de dag (laatste 7 dagen)
+                    </p>
+                  </div>
+                  <div className="card-content">
+                    {stats.hourlySearchPattern.length === 0 ? (
+                      <div className="text-center py-8">
+                        <Clock className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                        <p className="text-slate-500 dark:text-slate-400">Geen data beschikbaar</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {stats.hourlySearchPattern.map((hour, index) => {
+                          const maxCount = Math.max(...stats.hourlySearchPattern.map(h => h.search_count));
+                          const percentage = maxCount > 0 ? (hour.search_count / maxCount) * 100 : 0;
+                          return (
+                            <div key={index} className="flex items-center gap-3">
+                              <div className="w-12 text-sm text-slate-600 dark:text-slate-400">
+                                {hour.hour.toString().padStart(2, '0')}:00
+                              </div>
+                              <div className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-4 relative">
+                                <div 
+                                  className="bg-blue-500 h-4 rounded-full transition-all duration-300"
+                                  style={{ width: `${percentage}%` }}
+                                />
+                                <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white">
+                                  {hour.search_count}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Top Search Queries */}
+              <div className="card mb-8">
+                <div className="card-header">
+                  <h2 className="text-xl font-semibold">🔥 Populairste Zoekopdrachten</h2>
+                  <p className="text-slate-600 dark:text-slate-400">
+                    Meest gezochte kentekens en queries (anoniem)
+                  </p>
+                </div>
+                <div className="card-content">
+                  {stats.topSearchQueries.length === 0 ? (
+                    <div className="text-center py-8">
+                      <TrendingUp className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                        Nog geen populaire zoekopdrachten
+                      </h3>
+                      <p className="text-slate-500 dark:text-slate-400">
+                        Wacht tot er meer zoekopdrachten zijn uitgevoerd.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {stats.topSearchQueries.slice(0, 12).map((query, index) => (
+                        <div key={index} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              query.search_type === 'kenteken' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+                              query.search_type === 'wildcard' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                              'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
+                            }`}>
+                              {query.search_type}
+                            </span>
+                            <span className="text-lg font-bold text-slate-900 dark:text-white">
+                              {query.search_count}×
+                            </span>
+                          </div>
+                          <p className="text-sm font-mono text-slate-700 dark:text-slate-300 truncate">
+                            {query.search_query}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Daily Search Statistics */}
+              <div className="card mb-8">
+                <div className="card-header">
+                  <h2 className="text-xl font-semibold">📈 Dagelijkse Statistieken</h2>
+                  <p className="text-slate-600 dark:text-slate-400">
+                    Zoekopdrachten en unieke bezoekers per dag (laatste 30 dagen)
+                  </p>
+                </div>
+                <div className="card-content">
+                  {stats.dailySearchStats.length === 0 ? (
+                    <div className="text-center py-8">
+                      <BarChart3 className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                      <p className="text-slate-500 dark:text-slate-400">Geen dagelijkse data beschikbaar</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-slate-200 dark:border-slate-700">
+                            <th className="text-left py-3 px-4 font-medium text-slate-700 dark:text-slate-300">
+                              Datum
+                            </th>
+                            <th className="text-left py-3 px-4 font-medium text-slate-700 dark:text-slate-300">
+                              Zoekopdrachten
+                            </th>
+                            <th className="text-left py-3 px-4 font-medium text-slate-700 dark:text-slate-300">
+                              Unieke IP's
+                            </th>
+                            <th className="text-left py-3 px-4 font-medium text-slate-700 dark:text-slate-300">
+                              Gem. per IP
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {stats.dailySearchStats.slice(0, 14).map((day, index) => (
+                            <tr key={index} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                              <td className="py-3 px-4 text-slate-900 dark:text-white font-medium">
+                                {new Date(day.search_date).toLocaleDateString('nl-NL')}
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                                  {day.anonymous_searches}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                                  {day.unique_ips}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
+                                {day.unique_ips > 0 ? (day.anonymous_searches / day.unique_ips).toFixed(1) : '0'}
                               </td>
                             </tr>
                           ))}

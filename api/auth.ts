@@ -67,6 +67,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return await handleCleanupOldData(req, res);
       case 'admin-debug':
         return await handleAdminDebug(req, res);
+      case 'log-anonymous-search':
+        return await handleLogAnonymousSearch(req, res);
       default:
         return res.status(400).json({ error: 'Invalid action' });
     }
@@ -285,6 +287,54 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
       `);
       const totalSearchCount = parseInt(totalSearchesResult.rows[0].count);
 
+      // Get anonymous search statistics
+      const anonymousSearchesResult = await client.query(`
+        SELECT COUNT(*) as count 
+        FROM anonymous_searches
+      `);
+      const totalAnonymousSearches = parseInt(anonymousSearchesResult.rows[0].count);
+
+      // Get anonymous searches by type
+      const anonymousSearchesByTypeResult = await client.query(`
+        SELECT 
+          search_type,
+          COUNT(*) as count,
+          AVG(result_count) as avg_results
+        FROM anonymous_searches 
+        GROUP BY search_type
+        ORDER BY count DESC
+      `);
+      const anonymousSearchesByType = anonymousSearchesByTypeResult.rows;
+
+      // Get daily search statistics (last 30 days)
+      const dailySearchStatsResult = await client.query(`
+        SELECT 
+          DATE(created_at) as search_date,
+          COUNT(*) as anonymous_searches,
+          COUNT(DISTINCT ip_address) as unique_ips
+        FROM anonymous_searches 
+        WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+        GROUP BY DATE(created_at)
+        ORDER BY search_date DESC
+        LIMIT 30
+      `);
+      const dailySearchStats = dailySearchStatsResult.rows;
+
+      // Get top search queries (anonymous)
+      const topSearchQueriesResult = await client.query(`
+        SELECT 
+          search_query,
+          COUNT(*) as search_count,
+          search_type
+        FROM anonymous_searches 
+        WHERE search_query IS NOT NULL 
+        AND LENGTH(search_query) > 0
+        GROUP BY search_query, search_type
+        ORDER BY search_count DESC
+        LIMIT 50
+      `);
+      const topSearchQueries = topSearchQueriesResult.rows;
+
       // Get search count per user
       const searchesByUserResult = await client.query(`
         SELECT 
@@ -307,13 +357,30 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
       `);
       const recentUsers = recentUsersResult.rows;
 
+      // Get hourly search pattern
+      const hourlySearchPatternResult = await client.query(`
+        SELECT 
+          EXTRACT(HOUR FROM created_at) as hour,
+          COUNT(*) as search_count
+        FROM anonymous_searches 
+        WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+        GROUP BY EXTRACT(HOUR FROM created_at)
+        ORDER BY hour
+      `);
+      const hourlySearchPattern = hourlySearchPatternResult.rows;
+
       return res.status(200).json({
         totalUsers,
         totalSavedSearches,
         totalSavedVehicles,
         totalSearchCount,
+        totalAnonymousSearches,
+        anonymousSearchesByType,
+        dailySearchStats,
+        topSearchQueries,
         searchesByUser,
-        recentUsers
+        recentUsers,
+        hourlySearchPattern
       });
     } finally {
       client.release();
@@ -801,5 +868,55 @@ async function handleCleanupOldData(req: VercelRequest, res: VercelResponse) {
     }
   } catch (error) {
     return res.status(401).json({ error: 'Ongeldig token' });
+  }
+}
+
+async function handleLogAnonymousSearch(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { searchQuery, searchType, searchFilters, resultCount, sessionId } = req.body;
+
+  if (!searchQuery || !searchType) {
+    return res.status(400).json({ error: 'Search query and type are required' });
+  }
+
+  const client = await pool.connect();
+  
+  try {
+    // Get client IP and user agent
+    const clientIp = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.connection?.remoteAddress || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+
+    await client.query(`
+      INSERT INTO anonymous_searches (
+        search_query, 
+        search_type, 
+        search_filters, 
+        result_count, 
+        ip_address, 
+        user_agent, 
+        session_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [
+      searchQuery,
+      searchType,
+      searchFilters ? JSON.stringify(searchFilters) : null,
+      resultCount || 0,
+      clientIp,
+      userAgent,
+      sessionId || null
+    ]);
+
+    return res.status(200).json({ success: true });
+  } catch (error: any) {
+    console.error('Error logging anonymous search:', error);
+    return res.status(500).json({ 
+      error: 'Failed to log search',
+      details: error.message 
+    });
+  } finally {
+    client.release();
   }
 } 

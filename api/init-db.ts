@@ -94,6 +94,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at DESC);
     `);
 
+    // Anonymous searches table for tracking searches without account
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS anonymous_searches (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        search_query TEXT,
+        search_type VARCHAR(50) NOT NULL, -- 'kenteken', 'wildcard', 'trekgewicht'
+        search_filters JSONB,
+        result_count INTEGER DEFAULT 0,
+        ip_address INET,
+        user_agent TEXT,
+        session_id VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_anonymous_searches_created_at ON anonymous_searches(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_anonymous_searches_search_type ON anonymous_searches(search_type);
+      CREATE INDEX IF NOT EXISTS idx_anonymous_searches_ip ON anonymous_searches(ip_address);
+    `);
+
     // Create cleanup function for old saved vehicles (30 days)
     await client.query(`
       CREATE OR REPLACE FUNCTION cleanup_old_saved_vehicles()
