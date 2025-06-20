@@ -491,15 +491,32 @@ export function useVehicleSearch(query: string, filters: SearchFilters, enabled 
     staleTime: 1000 * 60 * 5, // 5 minutes
     cacheTime: 1000 * 60 * 30, // 30 minutes
     onSuccess: async (vehicles: ProcessedVehicle[]) => {
-      // Log search activity if user is authenticated
-      if (token && (query || Object.keys(filters).length > 0)) {
+      // Log search activity if user is authenticated and there's a meaningful search
+      const hasQuery = query && query.trim().length > 0;
+      const hasFilters = Object.values(filters).some(value => value !== undefined && value !== '');
+      
+      if (token && (hasQuery || hasFilters)) {
         try {
-          console.log('Logging search activity:', { query, filters, resultCount: vehicles.length });
+          console.log('Logging search activity:', { 
+            query: query || '', 
+            filters, 
+            resultCount: vehicles.length,
+            user: 'authenticated'
+          });
           await ApiAuthService.logSearch(token, query || '', filters, vehicles.length);
+          console.log('Search activity logged successfully');
         } catch (error) {
           console.warn('Failed to log search activity:', error);
           // Don't show error to user - search logging is not critical
         }
+      } else {
+        console.log('Search logging skipped:', { 
+          hasToken: !!token, 
+          hasQuery, 
+          hasFilters,
+          query: query || 'empty',
+          filterCount: Object.keys(filters).length
+        });
       }
     },
     onError: (error: Error) => {
