@@ -160,28 +160,29 @@ export default function AdminPage() {
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
       
-      // Check if it's a token error - auto logout
-      if (error.message?.includes('token') || error.message?.includes('Token') || 
-          error.message?.includes('Ongeldig') || error.message?.includes('401')) {
-        console.log('Token error detected - forcing logout');
-        
-        addNotification({
-          type: 'warning',
-          title: 'Sessie verlopen',
-          message: 'Je wordt automatisch uitgelogd vanwege een ongeldige token. Log opnieuw in.',
-          duration: 8000
-        });
-        
-        // Use the force logout function to clear everything
-        forceLogout();
-        
-        // Force a complete page reload to clear any cached state
-        setTimeout(() => {
-          window.location.href = '/login';
-        }, 1500);
-        
-        return;
-      }
+      // Temporarily disable auto-logout to debug the issue
+      // TODO: Re-enable once token issue is resolved
+      // if (error.message?.includes('token') || error.message?.includes('Token') || 
+      //     error.message?.includes('Ongeldig') || error.message?.includes('401')) {
+      //   console.log('Token error detected - forcing logout');
+      //   
+      //   addNotification({
+      //     type: 'warning',
+      //     title: 'Sessie verlopen',
+      //     message: 'Je wordt automatisch uitgelogd vanwege een ongeldige token. Log opnieuw in.',
+      //     duration: 8000
+      //   });
+      //   
+      //   // Use the force logout function to clear everything
+      //   forceLogout();
+      //   
+      //   // Force a complete page reload to clear any cached state
+      //   setTimeout(() => {
+      //     window.location.href = '/login';
+      //   }, 1500);
+      //   
+      //   return;
+      // }
       
       setError(error.message || 'Onbekende fout bij laden van admin data');
       
@@ -224,6 +225,28 @@ export default function AdminPage() {
       title: 'LocalStorage gewist',
       message: 'Alle lokale data is gewist. Herlaad de pagina.'
     });
+  };
+
+  const checkJWTStatus = async () => {
+    try {
+      const response = await fetch('/api/auth?action=debug-env');
+      const data = await response.json();
+      
+      addNotification({
+        type: 'info',
+        title: 'JWT Status',
+        message: `Secret length: ${data.jwtSecretLength}, From env: ${data.jwtSecretFromEnv}, Using default: ${data.isUsingDefaultSecret}`,
+        duration: 10000
+      });
+      
+      console.log('JWT Debug Info:', data);
+    } catch (error) {
+      addNotification({
+        type: 'error',
+        title: 'JWT Check Failed',
+        message: 'Kon JWT status niet controleren'
+      });
+    }
   };
 
   const forceLogoutAndClear = () => {
@@ -302,6 +325,13 @@ export default function AdminPage() {
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Ververs
+          </button>
+          <button
+            onClick={checkJWTStatus}
+            className="btn btn-secondary"
+          >
+            <Info className="w-4 h-4 mr-2" />
+            Check JWT
           </button>
           <button
             onClick={handleManualLogout}
