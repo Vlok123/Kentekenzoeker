@@ -58,6 +58,7 @@ interface AppState {
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   logout: () => void;
+  forceLogout: () => void;
   
   // Saved data
   savedSearches: any[];
@@ -156,13 +157,28 @@ export const useAppStore = create<AppState>()(
       isAuthenticated: false,
       setUser: (user) => set({ user, isAuthenticated: !!user }),
       setToken: (token) => set({ token }),
-      logout: () => set({ 
-        user: null, 
-        token: null, 
-        isAuthenticated: false,
-        savedSearches: [],
-        savedVehicles: []
-      }),
+        logout: () => set({ 
+    user: null, 
+    token: null, 
+    isAuthenticated: false,
+    savedSearches: [],
+    savedVehicles: []
+  }),
+  
+  // Force logout and clear all stored data
+  forceLogout: () => {
+    set({ 
+      user: null, 
+      token: null, 
+      isAuthenticated: false,
+      savedSearches: [],
+      savedVehicles: []
+    });
+    // Clear localStorage completely
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('rdw-app-storage');
+    }
+  },
 
       // Saved data
       savedSearches: [],
