@@ -11,6 +11,17 @@ const pool = new Pool({
 });
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
+// Debug function to check environment
+function debugEnvironment() {
+  return {
+    hasJwtSecret: !!JWT_SECRET,
+    jwtSecretLength: JWT_SECRET?.length || 0,
+    jwtSecretPreview: JWT_SECRET?.substring(0, 10) + '...',
+    nodeEnv: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  };
+}
 const JWT_EXPIRES_IN = '7d';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -69,6 +80,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return await handleAdminDebug(req, res);
       case 'log-anonymous-search':
         return await handleLogAnonymousSearch(req, res);
+      case 'debug-env':
+        return res.status(200).json(debugEnvironment());
       default:
         return res.status(400).json({ error: 'Invalid action' });
     }

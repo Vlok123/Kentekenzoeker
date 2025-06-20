@@ -77,13 +77,10 @@ export default function HomePage() {
                   }}
                 />
               </div>
-              <div className="text-lg sm:text-xl font-medium text-slate-600 dark:text-slate-300 mb-4">
-                <span className="text-blue-600 dark:text-blue-400 font-bold">www.carintel.nl</span>
-              </div>
             </div>
 
-            {/* Subtitle */}
-            <p className="text-lg sm:text-xl text-slate-600 dark:text-white/70 max-w-2xl mx-auto mb-12 leading-relaxed">
+            {/* Subtitle - directly under banner */}
+            <p className="text-lg sm:text-xl text-slate-600 dark:text-white/70 max-w-2xl mx-auto mb-12 leading-relaxed -mt-4">
               Ontdek alles over elk Nederlands voertuig met real-time RDW data 
               en een moderne, gebruiksvriendelijke ervaring.
             </p>
