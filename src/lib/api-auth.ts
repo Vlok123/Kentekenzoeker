@@ -2,7 +2,7 @@ import type { User, LoginCredentials, RegisterData, AuthResponse } from '@/types
 
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
   ? '/api' 
-  : '/api';
+  : 'https://www.carintel.nl/api';
 
 export class ApiAuthService {
   // Login user
