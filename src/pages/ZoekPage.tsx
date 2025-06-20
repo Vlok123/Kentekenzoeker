@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, Download, Star, Eye, Save, X } from 'lucide-react';
+import { Search, Filter, Download, Star, Eye, Save, X, Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useVehicleSearch, useVehicleBrands, useVehicleColors } from '@/hooks/useRdw';
 import { useAppStore } from '@/store/useAppStore';
@@ -15,6 +15,7 @@ export default function ZoekPage() {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveName, setSaveName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [showModelInfo, setShowModelInfo] = useState(false);
   
   const { 
     searchQuery, 
@@ -223,15 +224,41 @@ export default function ZoekPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Model/Variant
-                  </label>
+                <div className="relative">
+                  <div className="flex items-center gap-2 mb-1">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Model/Variant
+                    </label>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onMouseEnter={() => setShowModelInfo(true)}
+                        onMouseLeave={() => setShowModelInfo(false)}
+                        className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        <Info className="w-3.5 h-3.5" />
+                      </button>
+                      {showModelInfo && (
+                        <div className="absolute left-0 top-full mt-1 w-80 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-lg z-50 border border-slate-600">
+                          <div className="font-semibold mb-2">💡 Let op bij zoeken op modeltype:</div>
+                          <p className="mb-2">
+                            Soms wijkt de typebenaming in de RDW-data af van wat je gewend bent. 
+                            Zo heet een BMW 3-serie bijvoorbeeld <strong>"3ER"</strong> en een Golf Variant <strong>"GOLF VII VARIANT"</strong>.
+                          </p>
+                          <p className="text-slate-300">
+                            Kun je een kenteken niet vinden? Zoek dan op een vergelijkbaar type voertuig om te zien hoe het model in de database benoemd wordt. 
+                            Dat helpt bij het juist invoeren.
+                          </p>
+                          <div className="absolute -top-1 left-3 w-2 h-2 bg-slate-800 border-l border-t border-slate-600 transform rotate-45"></div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   <input
                     type="text"
                     value={filters.handelsbenaming || ''}
                     onChange={(e) => setFilters(prev => ({ ...prev, handelsbenaming: e.target.value || undefined }))}
-                    placeholder="bijv. GOLF, POLO, TIGUAN"
+                    placeholder="bijv. GOLF, POLO, TIGUAN, 3ER"
                     className="input"
                   />
                 </div>
