@@ -275,12 +275,7 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
   const token = authHeader.substring(7);
 
   try {
-    console.log('JWT_SECRET exists:', !!JWT_SECRET);
-    console.log('JWT_SECRET length:', JWT_SECRET?.length || 0);
-    console.log('Token to verify:', token.substring(0, 50) + '...');
-    
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    console.log('Token decoded successfully:', { userId: decoded.userId, email: decoded.email, role: decoded.role });
     
     // Check if user is admin
     const client = await pool.connect();
@@ -289,8 +284,6 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
         'SELECT role FROM users WHERE id = $1',
         [decoded.userId]
       );
-
-      console.log('User query result:', userResult.rows);
 
       if (userResult.rows.length === 0 || userResult.rows[0].role !== 'admin') {
         return res.status(403).json({ error: 'Geen admin rechten' });
@@ -413,9 +406,6 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
       client.release();
     }
   } catch (error) {
-    console.log('JWT verification error in handleAdminStats:', error);
-    console.log('Error message:', error instanceof Error ? error.message : 'Unknown error');
-    console.log('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return res.status(401).json({ error: 'Ongeldig token' });
   }
 }

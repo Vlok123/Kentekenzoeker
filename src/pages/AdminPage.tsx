@@ -56,7 +56,7 @@ export default function AdminPage() {
   const [debugInfo, setDebugInfo] = useState<Record<string, any>>({});
   const [debugData, setDebugData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'debug' | 'users'>('overview');
-  const { user, token, addNotification, logout } = useAppStore();
+  const { user, token, addNotification, logout, forceLogout } = useAppStore();
   const navigate = useNavigate();
 
   // Debug: Check token validity
@@ -172,14 +172,13 @@ export default function AdminPage() {
           duration: 8000
         });
         
-        // Clear all stored data and logout
-        localStorage.removeItem('rdw-app-storage');
-        logout();
+        // Use the force logout function to clear everything
+        forceLogout();
         
-        // Redirect to login after a short delay
+        // Force a complete page reload to clear any cached state
         setTimeout(() => {
-          navigate('/login');
-        }, 2000);
+          window.location.href = '/login';
+        }, 1500);
         
         return;
       }

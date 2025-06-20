@@ -167,16 +167,25 @@ export const useAppStore = create<AppState>()(
   
   // Force logout and clear all stored data
   forceLogout: () => {
+    // Clear all state
     set({ 
       user: null, 
       token: null, 
       isAuthenticated: false,
       savedSearches: [],
-      savedVehicles: []
+      savedVehicles: [],
+      recentSearches: [],
+      favorites: [],
+      vehicleCache: {},
+      notifications: []
     });
-    // Clear localStorage completely
+    
+    // Clear all storage
     if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem('rdw-app-storage');
+      localStorage.clear();
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.clear();
     }
   },
 
