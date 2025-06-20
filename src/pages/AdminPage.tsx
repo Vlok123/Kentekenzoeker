@@ -56,7 +56,7 @@ export default function AdminPage() {
   const [debugInfo, setDebugInfo] = useState<Record<string, any>>({});
   const [debugData, setDebugData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'debug' | 'users'>('overview');
-  const { user, token, addNotification, logout, forceLogout } = useAppStore();
+  const { user, token, addNotification, logout } = useAppStore();
   const navigate = useNavigate();
 
   // Debug: Check token validity
@@ -250,12 +250,10 @@ export default function AdminPage() {
   };
 
   const forceLogoutAndClear = () => {
-    // Clear all possible storage
-    localStorage.clear();
-    sessionStorage.clear();
+    const { forceLogout } = useAppStore.getState();
     
-    // Force logout
-    logout();
+    // Use the force logout function to clear everything
+    forceLogout();
     
     addNotification({
       type: 'success',
@@ -266,8 +264,7 @@ export default function AdminPage() {
     
     // Navigate to login
     setTimeout(() => {
-      navigate('/login');
-      window.location.reload(); // Force complete reload
+      window.location.href = '/login';
     }, 1000);
   };
 
