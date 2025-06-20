@@ -51,6 +51,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return await handleAdminStats(req, res);
       case 'admin-logs':
         return await handleAdminLogs(req, res);
+      case 'log-search':
+        return await handleLogSearch(req, res);
       case 'save-search-results':
         return await handleSaveSearchResults(req, res);
       case 'get-saved-searches':
@@ -273,6 +275,28 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
       const vehiclesResult = await client.query('SELECT COUNT(*) as count FROM saved_vehicles');
       const totalSavedVehicles = parseInt(vehiclesResult.rows[0].count);
 
+      // Get total search count from activity logs
+      const totalSearchesResult = await client.query(`
+        SELECT COUNT(*) as count 
+        FROM activity_logs 
+        WHERE action = 'SEARCH'
+      `);
+      const totalSearchCount = parseInt(totalSearchesResult.rows[0].count);
+
+      // Get search count per user
+      const searchesByUserResult = await client.query(`
+        SELECT 
+          u.email,
+          u.name,
+          COUNT(al.id) as search_count
+        FROM users u
+        LEFT JOIN activity_logs al ON u.id = al.user_id AND al.action = 'SEARCH'
+        GROUP BY u.id, u.email, u.name
+        ORDER BY search_count DESC
+        LIMIT 20
+      `);
+      const searchesByUser = searchesByUserResult.rows;
+
       const recentUsersResult = await client.query(`
         SELECT id, email, name, role, created_at 
         FROM users 
@@ -285,11 +309,42 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
         totalUsers,
         totalSavedSearches,
         totalSavedVehicles,
+        totalSearchCount,
+        searchesByUser,
         recentUsers
       });
     } finally {
       client.release();
     }
+  } catch (error) {
+    return res.status(401).json({ error: 'Ongeldig token' });
+  }
+}
+
+async function handleLogSearch(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Geen autorisatie token' });
+  }
+
+  const token = authHeader.substring(7);
+  const { searchQuery, searchFilters, resultCount } = req.body;
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    
+    // Log search activity
+    await logActivity(decoded.userId, 'SEARCH', {
+      search_query: searchQuery,
+      search_filters: searchFilters,
+      result_count: resultCount || 0
+    }, req);
+
+    return res.status(200).json({ success: true });
   } catch (error) {
     return res.status(401).json({ error: 'Ongeldig token' });
   }

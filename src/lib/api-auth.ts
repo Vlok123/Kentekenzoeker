@@ -103,6 +103,31 @@ export class ApiAuthService {
     return data;
   }
 
+  // Log search activity
+  static async logSearch(token: string, searchQuery: string, searchFilters: any, resultCount: number) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth?action=log-search`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          searchQuery,
+          searchFilters,
+          resultCount
+        }),
+      });
+
+      // Don't throw errors for logging failures to avoid breaking the search flow
+      if (!response.ok) {
+        console.warn('Failed to log search activity');
+      }
+    } catch (error) {
+      console.warn('Failed to log search activity:', error);
+    }
+  }
+
   // Save search results (kentekens from search)
   static async saveSearchResults(token: string, kentekens: string[], name: string, searchQuery?: string, searchFilters?: any) {
     const response = await fetch(`${API_BASE_URL}/auth?action=save-search-results`, {

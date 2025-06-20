@@ -5,6 +5,7 @@ import { useVehicleSearch, useVehicleBrands, useVehicleColors } from '@/hooks/us
 import { useAppStore } from '@/store/useAppStore';
 import { ApiAuthService as AuthService } from '@/lib/api-auth';
 import { generateCsvData } from '@/utils/dataProcessing';
+import { formatLicensePlate, normalizeLicensePlate } from '@/utils/licensePlate';
 import Autocomplete from '@/components/Autocomplete';
 import type { SearchFilters } from '@/types/rdw';
 
@@ -43,13 +44,36 @@ export default function ZoekPage() {
   }, [searchQuery, searchFilters]);
 
   const { data: vehicles = [], isLoading, error } = useVehicleSearch(searchQuery, searchFilters, !!searchQuery || Object.values(searchFilters).some(v => v));
+
+  // Log search activity when results are loaded
+  useEffect(() => {
+    if (searchQuery && vehicles.length > 0 && isAuthenticated && token && !isLoading && !error) {
+      AuthService.logSearch(token, searchQuery, searchFilters, vehicles.length);
+    }
+  }, [vehicles, searchQuery, searchFilters, isAuthenticated, token, isLoading, error]);
   const { data: brands = [] } = useVehicleBrands();
   const { data: colors = [] } = useVehicleColors();
 
-  const handleSearch = () => {
+  const handleInputChange = (value: string) => {
+    // If the input doesn't contain wildcards, try to format it as a license plate
+    if (!value.includes('*')) {
+      // For regular kenteken input, format it properly
+      const formatted = formatLicensePlate(value);
+      setQuery(formatted);
+    } else {
+      // For wildcard searches, keep as uppercase
+      setQuery(value.toUpperCase());
+    }
+  };
+
+  const handleSearch = async () => {
     // Validate input
     if (query && !query.includes('*') && query.length < 3) {
-      alert('Voer minstens 3 karakters in of gebruik wildcards (*)');
+      addNotification({
+        type: 'warning',
+        title: 'Onvoldoende karakters',
+        message: 'Voer minstens 3 karakters in of gebruik wildcards (*)'
+      });
       return;
     }
     
@@ -166,12 +190,15 @@ export default function ZoekPage() {
               <input
                 type="text"
                 value={query}
-                onChange={(e) => setQuery(e.target.value.toUpperCase())}
-                placeholder="Kenteken of wildcard (bijv. S714*, S*J, *14*)"
+                onChange={(e) => handleInputChange(e.target.value)}
+                placeholder="Kenteken of wildcard (bijv. S714NJ, S*J, *14*) - streepjes worden automatisch toegevoegd"
                 className="input w-full"
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 maxLength={10}
               />
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                💡 Tip: Je kunt kentekens invoeren met of zonder streepjes - ze worden automatisch geformatteerd
+              </div>
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
