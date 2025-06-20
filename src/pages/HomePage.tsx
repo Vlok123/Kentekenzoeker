@@ -75,23 +75,10 @@ export default function HomePage() {
             </div>
 
             {/* Subtitle */}
-            <p className="text-lg sm:text-xl text-slate-600 dark:text-white/70 max-w-2xl mx-auto mb-6 leading-relaxed">
+            <p className="text-lg sm:text-xl text-slate-600 dark:text-white/70 max-w-2xl mx-auto mb-12 leading-relaxed">
               Ontdek alles over elk Nederlands voertuig met real-time RDW data 
               en een moderne, gebruiksvriendelijke ervaring.
             </p>
-            
-            {/* Free Access Notice */}
-            <div className="max-w-lg mx-auto mb-8">
-              <div className="glass-card p-4 border-2 border-green-300 dark:border-green-600 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 shadow-lg">
-                <p className="text-green-800 dark:text-green-200 font-bold text-base flex items-center justify-center gap-2">
-                  <span className="text-xl">🎉</span>
-                  <span>Tijdelijk gratis toegang tot alle RDW data!</span>
-                </p>
-                <p className="text-green-700 dark:text-green-300 text-sm mt-1">
-                  Inclusief APK historie, technische specs en gebreken details
-                </p>
-              </div>
-            </div>
 
             {/* Beta Notice */}
             <div className="max-w-lg mx-auto mb-12">
