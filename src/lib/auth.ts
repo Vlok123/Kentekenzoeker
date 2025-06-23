@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from './database';
+import { EmailService } from './email';
 import type { User, LoginCredentials, RegisterData, AuthResponse } from '@/types/auth';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -28,6 +29,11 @@ export class AuthService {
         throw new Error('Ongeldig wachtwoord');
       }
 
+      // Check if email is verified
+      if (!user.email_verified) {
+        throw new Error('Email adres is nog niet geverifieerd. Controleer je inbox voor de verificatie email.');
+      }
+
       const token = jwt.sign(
         { userId: user.id, email: user.email, role: user.role },
         JWT_SECRET,
@@ -50,7 +56,7 @@ export class AuthService {
   }
 
   // Register new user
-  static async register(data: RegisterData): Promise<AuthResponse> {
+  static async register(data: RegisterData): Promise<{ message: string }> {
     const client = await pool.connect();
     
     try {
@@ -67,33 +73,29 @@ export class AuthService {
       // Hash password
       const hashedPassword = await bcrypt.hash(data.password, 12);
 
-      // Create user
+      // Generate email verification token
+      const emailToken = EmailService.generateToken();
+      const emailExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      // Create user with email verification token
       const result = await client.query(
-        `INSERT INTO users (email, password_hash, name)
-         VALUES ($1, $2, $3)
-         RETURNING id, email, name, role, created_at, updated_at`,
-        [data.email.toLowerCase(), hashedPassword, data.name]
+        `INSERT INTO users (email, password_hash, name, email_verification_token, email_verification_expires)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, email, name`,
+        [data.email.toLowerCase(), hashedPassword, data.name, emailToken, emailExpires]
       );
 
       const user = result.rows[0];
 
-      // Generate token
-      const token = jwt.sign(
-        { userId: user.id, email: user.email, role: user.role },
-        JWT_SECRET,
-        { expiresIn: JWT_EXPIRES_IN }
-      );
+      // Send verification email
+      try {
+        await EmailService.sendEmailVerification(user.email, user.name || '', emailToken);
+      } catch (emailError) {
+        console.error('Failed to send verification email:', emailError);
+        // Continue registration even if email fails
+      }
 
-      const userData: User = {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        created_at: user.created_at,
-        updated_at: user.updated_at
-      };
-
-      return { user: userData, token };
+      return { message: 'Account aangemaakt! Controleer je email voor de verificatie link.' };
     } finally {
       client.release();
     }
@@ -233,6 +235,172 @@ export class AuthService {
       );
 
       return result.rows;
+    } finally {
+      client.release();
+    }
+  }
+
+  // Verify email with token
+  static async verifyEmail(token: string): Promise<{ message: string }> {
+    const client = await pool.connect();
+    
+    try {
+      // Find user by verification token
+      const result = await client.query(
+        'SELECT * FROM users WHERE email_verification_token = $1 AND email_verification_expires > NOW()',
+        [token]
+      );
+
+      if (result.rows.length === 0) {
+        throw new Error('Ongeldige of verlopen verificatie link');
+      }
+
+      const user = result.rows[0];
+
+      // Update user to verified and clear token
+      await client.query(
+        `UPDATE users 
+         SET email_verified = TRUE, 
+             email_verification_token = NULL, 
+             email_verification_expires = NULL,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1`,
+        [user.id]
+      );
+
+      return { message: 'Email succesvol geverifieerd! Je kunt nu inloggen.' };
+    } finally {
+      client.release();
+    }
+  }
+
+  // Request password reset
+  static async requestPasswordReset(email: string): Promise<{ message: string }> {
+    const client = await pool.connect();
+    
+    try {
+      // Find user by email
+      const result = await client.query(
+        'SELECT * FROM users WHERE email = $1',
+        [email.toLowerCase()]
+      );
+
+      if (result.rows.length === 0) {
+        // Don't reveal if email exists or not for security
+        return { message: 'Als dit email adres bestaat, is er een wachtwoord reset link verstuurd.' };
+      }
+
+      const user = result.rows[0];
+
+      // Generate password reset token
+      const resetToken = EmailService.generateToken();
+      const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      // Save reset token
+      await client.query(
+        `UPDATE users 
+         SET password_reset_token = $1, 
+             password_reset_expires = $2,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $3`,
+        [resetToken, resetExpires, user.id]
+      );
+
+      // Send password reset email
+      try {
+        await EmailService.sendPasswordReset(user.email, user.name || '', resetToken);
+      } catch (emailError) {
+        console.error('Failed to send password reset email:', emailError);
+        // Continue even if email fails
+      }
+
+      return { message: 'Als dit email adres bestaat, is er een wachtwoord reset link verstuurd.' };
+    } finally {
+      client.release();
+    }
+  }
+
+  // Reset password with token
+  static async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    const client = await pool.connect();
+    
+    try {
+      // Find user by reset token
+      const result = await client.query(
+        'SELECT * FROM users WHERE password_reset_token = $1 AND password_reset_expires > NOW()',
+        [token]
+      );
+
+      if (result.rows.length === 0) {
+        throw new Error('Ongeldige of verlopen wachtwoord reset link');
+      }
+
+      const user = result.rows[0];
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+      // Update password and clear reset token
+      await client.query(
+        `UPDATE users 
+         SET password_hash = $1, 
+             password_reset_token = NULL, 
+             password_reset_expires = NULL,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $2`,
+        [hashedPassword, user.id]
+      );
+
+      return { message: 'Wachtwoord succesvol gewijzigd! Je kunt nu inloggen met je nieuwe wachtwoord.' };
+    } finally {
+      client.release();
+    }
+  }
+
+  // Resend email verification
+  static async resendEmailVerification(email: string): Promise<{ message: string }> {
+    const client = await pool.connect();
+    
+    try {
+      // Find user by email
+      const result = await client.query(
+        'SELECT * FROM users WHERE email = $1',
+        [email.toLowerCase()]
+      );
+
+      if (result.rows.length === 0) {
+        throw new Error('Gebruiker niet gevonden');
+      }
+
+      const user = result.rows[0];
+
+      if (user.email_verified) {
+        throw new Error('Email adres is al geverifieerd');
+      }
+
+      // Generate new verification token
+      const emailToken = EmailService.generateToken();
+      const emailExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      // Update verification token
+      await client.query(
+        `UPDATE users 
+         SET email_verification_token = $1, 
+             email_verification_expires = $2,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $3`,
+        [emailToken, emailExpires, user.id]
+      );
+
+      // Send verification email
+      try {
+        await EmailService.sendEmailVerification(user.email, user.name || '', emailToken);
+      } catch (emailError) {
+        console.error('Failed to send verification email:', emailError);
+        throw new Error('Kon verificatie email niet versturen. Probeer het later opnieuw.');
+      }
+
+      return { message: 'Nieuwe verificatie email verstuurd! Controleer je inbox.' };
     } finally {
       client.release();
     }

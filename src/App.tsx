@@ -13,6 +13,9 @@ import DashboardPage from '@/pages/DashboardPage';
 import MijnOpgeslagenPage from '@/pages/MijnOpgeslagenPage';
 import AdminPage from '@/pages/AdminPage';
 import SetupPage from '@/pages/SetupPage';
+import VerifyEmailPage from '@/pages/VerifyEmailPage';
+import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
+import ResetPasswordPage from '@/pages/ResetPasswordPage';
 
 
 // Layout wrapper that uses Outlet
@@ -61,9 +64,12 @@ function App() {
     <>
       <NotificationProvider />
       <Routes>
-        {/* Login route without layout */}
+        {/* Authentication routes without layout */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/setup" element={<SetupPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         
         {/* Routes with layout */}
         <Route path="/" element={<LayoutWrapper />}>

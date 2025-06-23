@@ -63,7 +63,7 @@ export class ApiAuthService {
   }
 
   // Register new user
-  static async register(data: RegisterData): Promise<AuthResponse> {
+  static async register(data: RegisterData): Promise<{ message: string }> {
     const response = await fetch(`${API_BASE_URL}/auth?action=register`, {
       method: 'POST',
       headers: {
@@ -344,5 +344,81 @@ export class ApiAuthService {
     } catch (error) {
       console.warn('Failed to log anonymous search activity:', error);
     }
+  }
+
+  // Verify email with token
+  static async verifyEmail(token: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE_URL}/auth?action=verify-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ token }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Email verification failed');
+    }
+
+    return data;
+  }
+
+  // Request password reset
+  static async requestPasswordReset(email: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE_URL}/auth?action=request-password-reset`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Password reset request failed');
+    }
+
+    return data;
+  }
+
+  // Reset password with token
+  static async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE_URL}/auth?action=reset-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ token, newPassword }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Password reset failed');
+    }
+
+    return data;
+  }
+
+  // Resend email verification
+  static async resendEmailVerification(email: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE_URL}/auth?action=resend-email-verification`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to resend verification email');
+    }
+
+    return data;
   }
 } 

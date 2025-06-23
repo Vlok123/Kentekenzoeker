@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { useVehicleSearch, useVehicleBrands, useVehicleColors } from '@/hooks/useRdw';
 import { useAppStore } from '@/store/useAppStore';
 import { ApiAuthService as AuthService } from '@/lib/api-auth';
-import { generateCsvData } from '@/utils/dataProcessing';
+import { generateExcelCsvBlob } from '@/utils/dataProcessing';
 import Autocomplete from '@/components/Autocomplete';
 import type { SearchFilters } from '@/types/rdw';
 
@@ -83,8 +83,7 @@ export default function ZoekPage() {
   const handleExportCsv = () => {
     if (vehicles.length === 0) return;
     
-    const csvData = generateCsvData(vehicles);
-    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const blob = generateExcelCsvBlob(vehicles);
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
@@ -93,6 +92,13 @@ export default function ZoekPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    addNotification({
+      type: 'success',
+      title: 'Export gestart',
+      message: `${vehicles.length} voertuigen geëxporteerd als CSV bestand`
+    });
   };
 
   const handleSaveResults = () => {

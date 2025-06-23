@@ -411,7 +411,7 @@ export function calculateBpm(vehicle: ProcessedVehicle, provinceCode: string): {
 }
 
 /**
- * Genereert CSV data voor export
+ * Genereert CSV data voor export - Windows/Excel compatibel
  */
 export function generateCsvData(vehicles: ProcessedVehicle[]): string {
   const headers = [
@@ -422,10 +422,13 @@ export function generateCsvData(vehicles: ProcessedVehicle[]): string {
     'Brandstof',
     'Kleur',
     'APK Geldig Tot',
-    'CO2 Uitstoot',
-    'Massa (kg)',
+    'CO2 Uitstoot (g/km)',
+    'Massa Rijklaar (kg)',
     'Trekgewicht Geremd (kg)',
     'Euro Klasse',
+    'Cilinderinhoud (cm³)',
+    'Vermogen (kW)',
+    'Voertuigsoort',
   ];
 
   const rows = vehicles.map(vehicle => [
@@ -436,15 +439,37 @@ export function generateCsvData(vehicles: ProcessedVehicle[]): string {
     vehicle.brandstof,
     vehicle.kleur,
     vehicle.apkGeldigTot ? formatDate(vehicle.apkGeldigTot) : 'Onbekend',
-    vehicle.milieu.co2Uitstoot.toString(),
-    vehicle.massa.rijklaar.toString(),
-    vehicle.trekgewicht.geremd.toString(),
+    vehicle.milieu.co2Uitstoot ? vehicle.milieu.co2Uitstoot.toString() : '0',
+    vehicle.massa.rijklaar ? vehicle.massa.rijklaar.toString() : '0',
+    vehicle.trekgewicht.geremd ? vehicle.trekgewicht.geremd.toString() : '0',
     vehicle.milieu.euroKlasse,
+    vehicle.motor.cilinderinhoud ? vehicle.motor.cilinderinhoud.toString() : '0',
+    vehicle.motor.vermogen ? vehicle.motor.vermogen.toString() : '0',
+    vehicle.voertuigsoort,
   ]);
 
+  // Gebruik puntkomma als delimiter voor Windows/Excel compatibiliteit
+  // Escape quotes door ze te dubbelen
   const csvContent = [headers, ...rows]
-    .map(row => row.map(cell => `"${cell}"`).join(','))
-    .join('\n');
+    .map(row => row.map(cell => {
+      const escaped = cell.replace(/"/g, '""');
+      return `"${escaped}";`;
+    }).join('').slice(0, -1)) // Remove laatste puntkomma
+    .join('\r\n'); // Windows line endings
 
   return csvContent;
+}
+
+/**
+ * Genereert Excel-compatibele CSV met BOM voor correcte encoding
+ */
+export function generateExcelCsvBlob(vehicles: ProcessedVehicle[]): Blob {
+  const csvContent = generateCsvData(vehicles);
+  
+  // BOM (Byte Order Mark) voor UTF-8 - zorgt ervoor dat Excel UTF-8 correct interpreteert
+  const BOM = '\uFEFF';
+  
+  return new Blob([BOM + csvContent], { 
+    type: 'text/csv;charset=utf-8;' 
+  });
 } 

@@ -13,7 +13,12 @@ import {
   AlertCircle,
   User,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Globe,
+  Eye,
+  UserCheck,
+  Hash,
+  BarChart3
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { fetchWithAuth } from '@/lib/api-auth';
@@ -36,6 +41,23 @@ interface AdminStats {
     total_activities: number;
     last_activity: string;
     created_at: string;
+  }>;
+  anonymousStats: {
+    totalAnonymousSearches: number;
+    uniqueSessions: number;
+    uniqueIps: number;
+    todayAnonymous: number;
+    weekAnonymous: number;
+  };
+  kentekenStats: {
+    totalKentekenSearches: number;
+    todayKenteken: number;
+    weekKenteken: number;
+  };
+  searchTypeBreakdown: Array<{
+    search_type: string;
+    count: number;
+    today_count: number;
   }>;
 }
 
@@ -120,7 +142,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Stats Grid */}
+      {/* Primary Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Total Users */}
         <div className="card">
@@ -205,6 +227,97 @@ export default function AdminPage() {
               </p>
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                 Zoekopdrachten vandaag
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Anonymous Users & Kenteken Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Anonymous Sessions */}
+        <div className="card">
+          <div className="card-content">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                <Globe className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+              </div>
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                Anoniem
+              </span>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                {loading ? '...' : stats?.anonymousStats?.uniqueSessions || 0}
+              </p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                Unieke sessies
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Unique IPs */}
+        <div className="card">
+          <div className="card-content">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg">
+                <Eye className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
+              </div>
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                Anoniem
+              </span>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                {loading ? '...' : stats?.anonymousStats?.uniqueIps || 0}
+              </p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                Unieke IP's
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Kenteken Searches Total */}
+        <div className="card">
+          <div className="card-content">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                <Hash className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                Kentekens
+              </span>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                {loading ? '...' : stats?.kentekenStats?.totalKentekenSearches || 0}
+              </p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                Kenteken zoekopdrachten
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Kenteken Today */}
+        <div className="card">
+          <div className="card-content">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-rose-100 dark:bg-rose-900/30 rounded-lg">
+                <BarChart3 className="w-6 h-6 text-rose-600 dark:text-rose-400" />
+              </div>
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                Vandaag
+              </span>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                {loading ? '...' : (stats?.kentekenStats?.todayKenteken || 0) + (stats?.anonymousStats?.todayAnonymous || 0)}
+              </p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                Kentekens vandaag
               </p>
             </div>
           </div>
@@ -346,13 +459,13 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Popular Searches & Recent Users */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Popular Searches */}
+      {/* Search Analytics */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        {/* Popular Kentekens */}
         <div className="card">
           <div className="card-header">
             <h2 className="text-xl font-semibold flex items-center gap-2">
-              <Search className="w-5 h-5" />
+              <Hash className="w-5 h-5" />
               Populaire Kentekens
             </h2>
           </div>
@@ -361,13 +474,18 @@ export default function AdminPage() {
               <p className="text-slate-500">Laden...</p>
             ) : stats?.popularSearches && stats.popularSearches.length > 0 ? (
               <div className="space-y-3">
-                {stats.popularSearches.slice(0, 5).map((search, index) => (
+                {stats.popularSearches.slice(0, 8).map((search, index) => (
                   <div key={index} className="flex items-center justify-between py-2 border-b border-slate-200 dark:border-slate-700 last:border-0">
-                    <span className="font-mono font-medium text-slate-900 dark:text-slate-100">
-                      {search.kenteken}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
+                        #{index + 1}
+                      </span>
+                      <span className="font-mono font-medium text-slate-900 dark:text-slate-100">
+                        {search.kenteken}
+                      </span>
+                    </div>
                     <span className="text-sm text-slate-600 dark:text-slate-400">
-                      {search.count} keer
+                      {search.count}x
                     </span>
                   </div>
                 ))}
@@ -378,11 +496,54 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {/* Search Type Breakdown */}
+        <div className="card">
+          <div className="card-header">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <BarChart3 className="w-5 h-5" />
+              Zoektype Verdeling
+            </h2>
+          </div>
+          <div className="card-content">
+            {loading ? (
+              <p className="text-slate-500">Laden...</p>
+            ) : stats?.searchTypeBreakdown && stats.searchTypeBreakdown.length > 0 ? (
+              <div className="space-y-4">
+                {stats.searchTypeBreakdown.map((type, index) => (
+                  <div key={index} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-900 dark:text-slate-100 capitalize">
+                        {type.search_type.toLowerCase()}
+                      </span>
+                      <div className="flex gap-2 text-sm text-slate-600 dark:text-slate-400">
+                        <span>{type.count} totaal</span>
+                        <span className="text-green-600 dark:text-green-400">
+                          {type.today_count} vandaag
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                      <div 
+                        className="bg-blue-500 dark:bg-blue-400 h-2 rounded-full transition-all duration-500"
+                        style={{ 
+                          width: `${Math.max(10, (type.count / Math.max(...stats.searchTypeBreakdown.map(t => t.count))) * 100)}%` 
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-slate-500">Geen zoektype data beschikbaar</p>
+            )}
+          </div>
+        </div>
+
         {/* Recent Users */}
         <div className="card">
           <div className="card-header">
             <h2 className="text-xl font-semibold flex items-center gap-2">
-              <Clock className="w-5 h-5" />
+              <UserCheck className="w-5 h-5" />
               Recente Gebruikers
             </h2>
           </div>
@@ -391,13 +552,18 @@ export default function AdminPage() {
               <p className="text-slate-500">Laden...</p>
             ) : stats?.recentUsers && stats.recentUsers.length > 0 ? (
               <div className="space-y-3">
-                {stats.recentUsers.slice(0, 5).map((user, index) => (
+                {stats.recentUsers.slice(0, 6).map((user, index) => (
                   <div key={index} className="flex items-center justify-between py-2 border-b border-slate-200 dark:border-slate-700 last:border-0">
-                    <span className="text-sm text-slate-900 dark:text-slate-100">
-                      {user.email}
-                    </span>
-                    <span className="text-sm text-slate-600 dark:text-slate-400">
-                      {new Date(user.created_at).toLocaleDateString('nl-NL')}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-slate-900 dark:text-slate-100 truncate">
+                        {user.email}
+                      </p>
+                    </div>
+                    <span className="text-xs text-slate-600 dark:text-slate-400 ml-2">
+                      {new Date(user.created_at).toLocaleDateString('nl-NL', {
+                        day: 'numeric',
+                        month: 'short'
+                      })}
                     </span>
                   </div>
                 ))}

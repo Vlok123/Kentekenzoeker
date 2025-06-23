@@ -40,11 +40,13 @@ export default function MijnOpgeslagenPage() {
       rows.push(row);
     }
     
-    const content = rows.join('\n');
+    // Use Windows line endings for better compatibility
+    const content = rows.join('\r\n');
     const filename = `${result.name.replace(/[^a-zA-Z0-9]/g, '_')}_kentekens.txt`;
     
-    // Create and download file
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    // Add BOM for UTF-8 Windows compatibility
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + content], { type: 'text/plain;charset=utf-8' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
@@ -58,7 +60,7 @@ export default function MijnOpgeslagenPage() {
     addNotification({
       type: 'success',
       title: 'Download gestart',
-      message: `${kentekens.length} kentekens gedownload als ${filename}`
+      message: `${kentekens.length} kentekens gedownload als ${filename} (Windows-compatibel)`
     });
   };
 

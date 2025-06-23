@@ -96,16 +96,21 @@ export default function LoginPage() {
         };
 
         const response = await AuthService.register(registerData);
-        setUser(response.user);
-        setToken(response.token);
         
         addNotification({
           type: 'success',
           title: 'Account aangemaakt',
-          message: `Welkom bij CarIntel, ${response.user.name || response.user.email}!`
+          message: response.message
         });
 
-        navigate(from, { replace: true });
+        // Switch to login form after successful registration
+        setIsLogin(true);
+        setFormData({
+          email: formData.email,
+          password: '',
+          name: '',
+          confirmPassword: ''
+        });
       }
     } catch (error: any) {
       // Set specific error message based on the error
@@ -277,6 +282,18 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+
+          {/* Forgot password link (only show for login) */}
+          {isLogin && (
+            <div className="mt-4 text-center">
+              <Link 
+                to="/forgot-password" 
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Wachtwoord vergeten?
+              </Link>
+            </div>
+          )}
 
           {/* Toggle between login and register */}
           <div className="mt-6 text-center">

@@ -2,6 +2,8 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import nodemailer from 'nodemailer';
+import crypto from 'crypto';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_p1IJPygusA8w@ep-patient-mouse-a9tzeizd-pooler.gwc.azure.neon.tech/neondb?sslmode=require',
@@ -93,6 +95,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(200).json(debugEnvironment());
       case 'force-logout-all':
         return await handleForceLogoutAll(req, res);
+      case 'verify-email':
+        return await handleVerifyEmail(req, res);
+      case 'request-password-reset':
+        return await handleRequestPasswordReset(req, res);
+      case 'reset-password':
+        return await handleResetPassword(req, res);
+      case 'resend-email-verification':
+        return await handleResendEmailVerification(req, res);
 
       default:
         return res.status(400).json({ error: 'Invalid action' });
@@ -131,6 +141,11 @@ async function handleLogin(req: VercelRequest, res: VercelResponse) {
 
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Ongeldig wachtwoord' });
+    }
+
+    // Check if email is verified
+    if (!user.email_verified) {
+      return res.status(401).json({ error: 'Email adres is nog niet geverifieerd. Controleer je inbox voor de verificatie email.' });
     }
 
     const token = jwt.sign(
@@ -188,36 +203,32 @@ async function handleRegister(req: VercelRequest, res: VercelResponse) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Create user
+    // Generate email verification token
+    const emailToken = generateToken();
+    const emailExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    // Create user with email verification token
     const result = await client.query(
-      `INSERT INTO users (email, password_hash, name)
-       VALUES ($1, $2, $3)
-       RETURNING id, email, name, role, created_at, updated_at`,
-      [email.toLowerCase(), hashedPassword, name || null]
+      `INSERT INTO users (email, password_hash, name, email_verification_token, email_verification_expires)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, email, name`,
+      [email.toLowerCase(), hashedPassword, name || null, emailToken, emailExpires]
     );
 
     const user = result.rows[0];
 
-    // Generate token
-    const token = jwt.sign(
-      { userId: user.id, email: user.email, role: user.role },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
-    );
-
-    const userData = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      created_at: user.created_at,
-      updated_at: user.updated_at
-    };
+    // Send verification email
+    try {
+      await sendEmailVerification(user.email, user.name || '', emailToken);
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      // Continue registration even if email fails
+    }
 
     // Log registration activity
     await logActivity(user.id, 'REGISTER', { email: user.email, name: user.name }, req);
 
-    return res.status(201).json({ user: userData, token });
+    return res.status(201).json({ message: 'Account aangemaakt! Controleer je email voor de verificatie link.' });
   } finally {
     client.release();
   }
@@ -310,7 +321,7 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
       const totalSearchesResult = await client.query(`
         SELECT 
           (SELECT COUNT(*) FROM activity_logs WHERE action = 'SEARCH') + 
-          (SELECT COUNT(*) FROM anonymous_searches) as count
+          (SELECT COALESCE(COUNT(*), 0) FROM anonymous_searches) as count
       `);
       const totalSearches = parseInt(totalSearchesResult.rows[0].count);
 
@@ -318,29 +329,74 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
       const searchesTodayResult = await client.query(`
         SELECT 
           (SELECT COUNT(*) FROM activity_logs WHERE action = 'SEARCH' AND DATE(created_at) = CURRENT_DATE) + 
-          (SELECT COUNT(*) FROM anonymous_searches WHERE DATE(created_at) = CURRENT_DATE) as count
+          (SELECT COALESCE(COUNT(*), 0) FROM anonymous_searches WHERE DATE(created_at) = CURRENT_DATE) as count
       `);
       const searchesToday = parseInt(searchesTodayResult.rows[0].count);
+
+      // Get anonymous statistics
+      const anonymousStatsResult = await client.query(`
+        SELECT 
+          COUNT(*) as total_anonymous_searches,
+          COUNT(DISTINCT session_id) as unique_sessions,
+          COUNT(DISTINCT ip_address) as unique_ips,
+          COUNT(CASE WHEN DATE(created_at) = CURRENT_DATE THEN 1 END) as today_anonymous,
+          COUNT(CASE WHEN created_at >= CURRENT_DATE - INTERVAL '7 days' THEN 1 END) as week_anonymous
+        FROM anonymous_searches
+      `);
+      const anonymousStats = anonymousStatsResult.rows[0] || {
+        total_anonymous_searches: 0,
+        unique_sessions: 0,
+        unique_ips: 0,
+        today_anonymous: 0,
+        week_anonymous: 0
+      };
+
+      // Get kenteken-specific searches
+      const kentekenSearchesResult = await client.query(`
+        SELECT 
+          COUNT(*) as total_kenteken_searches,
+          COUNT(CASE WHEN DATE(created_at) = CURRENT_DATE THEN 1 END) as today_kenteken,
+          COUNT(CASE WHEN created_at >= CURRENT_DATE - INTERVAL '7 days' THEN 1 END) as week_kenteken
+        FROM anonymous_searches 
+        WHERE search_type = 'KENTEKEN'
+      `);
+      const kentekenStats = kentekenSearchesResult.rows[0] || {
+        total_kenteken_searches: 0,
+        today_kenteken: 0,
+        week_kenteken: 0
+      };
 
       // Get popular searches (combining kentekens from both sources)
       const popularSearchesResult = await client.query(`
         WITH all_searches AS (
-          SELECT search_query as kenteken FROM anonymous_searches 
-          WHERE search_type = 'KENTEKEN' AND search_query IS NOT NULL
+          SELECT UPPER(search_query) as kenteken FROM anonymous_searches 
+          WHERE search_type = 'KENTEKEN' AND search_query IS NOT NULL AND search_query != ''
           UNION ALL
-          SELECT details->>'searchQuery' as kenteken FROM activity_logs 
-          WHERE action = 'SEARCH' AND details->>'searchQuery' IS NOT NULL
+          SELECT UPPER(details->>'searchQuery') as kenteken FROM activity_logs 
+          WHERE action = 'SEARCH' AND details->>'searchQuery' IS NOT NULL AND details->>'searchQuery' != ''
         )
         SELECT 
-          UPPER(kenteken) as kenteken,
+          kenteken,
           COUNT(*) as count
         FROM all_searches
-        WHERE kenteken != ''
-        GROUP BY UPPER(kenteken)
+        WHERE kenteken != '' AND kenteken ~ '^[A-Z0-9-]+$'
+        GROUP BY kenteken
         ORDER BY count DESC
-        LIMIT 10
+        LIMIT 15
       `);
       const popularSearches = popularSearchesResult.rows;
+
+      // Get search type breakdown for anonymous users
+      const searchTypeBreakdownResult = await client.query(`
+        SELECT 
+          search_type,
+          COUNT(*) as count,
+          COUNT(CASE WHEN DATE(created_at) = CURRENT_DATE THEN 1 END) as today_count
+        FROM anonymous_searches
+        GROUP BY search_type
+        ORDER BY count DESC
+      `);
+      const searchTypeBreakdown = searchTypeBreakdownResult.rows;
 
       // Get recent users
       const recentUsersResult = await client.query(`
@@ -410,7 +466,20 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
         searchesByDay,
         savedVehicles,
         databaseSize,
-        userActivity
+        userActivity,
+        anonymousStats: {
+          totalAnonymousSearches: parseInt(anonymousStats.total_anonymous_searches || 0),
+          uniqueSessions: parseInt(anonymousStats.unique_sessions || 0),
+          uniqueIps: parseInt(anonymousStats.unique_ips || 0),
+          todayAnonymous: parseInt(anonymousStats.today_anonymous || 0),
+          weekAnonymous: parseInt(anonymousStats.week_anonymous || 0)
+        },
+        kentekenStats: {
+          totalKentekenSearches: parseInt(kentekenStats.total_kenteken_searches || 0),
+          todayKenteken: parseInt(kentekenStats.today_kenteken || 0),
+          weekKenteken: parseInt(kentekenStats.week_kenteken || 0)
+        },
+        searchTypeBreakdown
       });
     } finally {
       client.release();
@@ -968,4 +1037,361 @@ async function handleLogAnonymousSearch(req: VercelRequest, res: VercelResponse)
   }
 }
 
- 
+// Email configuration
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+});
+
+const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@carintel.nl';
+const APP_URL = process.env.APP_URL || 'https://carintel.nl';
+
+// Generate secure token
+function generateToken(): string {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+// Send email verification
+async function sendEmailVerification(email: string, name: string, token: string): Promise<void> {
+  const verificationUrl = `${APP_URL}/verify-email?token=${token}`;
+  
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; padding: 20px 0; border-bottom: 1px solid #eee; }
+        .logo { color: #3b82f6; font-size: 24px; font-weight: bold; }
+        .content { padding: 30px 0; }
+        .button { display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0; }
+        .footer { text-align: center; padding: 20px 0; border-top: 1px solid #eee; color: #666; font-size: 14px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <div class="logo">CarIntel</div>
+        </div>
+        
+        <div class="content">
+          <h2>Welkom bij CarIntel${name ? `, ${name}` : ''}!</h2>
+          
+          <p>Bedankt voor het aanmaken van je account. Om je account te activeren, klik je op de onderstaande knop:</p>
+          
+          <a href="${verificationUrl}" class="button">Email bevestigen</a>
+          
+          <p>Je kunt ook deze link in je browser kopiëren:</p>
+          <p style="background: #f5f5f5; padding: 10px; border-radius: 4px; word-wrap: break-word;">${verificationUrl}</p>
+          
+          <p><strong>Deze link is 24 uur geldig.</strong></p>
+          
+          <p>Als je dit account niet hebt aangemaakt, kun je deze email negeren.</p>
+        </div>
+        
+        <div class="footer">
+          <p>© 2024 CarIntel - Je betrouwbare auto-informatie platform</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await transporter.sendMail({
+    from: FROM_EMAIL,
+    to: email,
+    subject: 'Bevestig je CarIntel account',
+    html: htmlContent
+  });
+}
+
+// Send password reset email
+async function sendPasswordReset(email: string, name: string, token: string): Promise<void> {
+  const resetUrl = `${APP_URL}/reset-password?token=${token}`;
+  
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; padding: 20px 0; border-bottom: 1px solid #eee; }
+        .logo { color: #3b82f6; font-size: 24px; font-weight: bold; }
+        .content { padding: 30px 0; }
+        .button { display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0; }
+        .footer { text-align: center; padding: 20px 0; border-top: 1px solid #eee; color: #666; font-size: 14px; }
+        .warning { background: #fef3cd; border: 1px solid #fecaca; padding: 15px; border-radius: 8px; margin: 20px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <div class="logo">CarIntel</div>
+        </div>
+        
+        <div class="content">
+          <h2>Wachtwoord resetten${name ? ` voor ${name}` : ''}</h2>
+          
+          <p>Je hebt een verzoek ingediend om je wachtwoord te resetten. Klik op de onderstaande knop om een nieuw wachtwoord in te stellen:</p>
+          
+          <a href="${resetUrl}" class="button">Nieuw wachtwoord instellen</a>
+          
+          <p>Je kunt ook deze link in je browser kopiëren:</p>
+          <p style="background: #f5f5f5; padding: 10px; border-radius: 4px; word-wrap: break-word;">${resetUrl}</p>
+          
+          <div class="warning">
+            <strong>⚠️ Belangrijk:</strong>
+            <ul>
+              <li>Deze link is slechts 1 uur geldig</li>
+              <li>De link kan maar één keer gebruikt worden</li>
+              <li>Als je dit verzoek niet hebt ingediend, negeer dan deze email</li>
+            </ul>
+          </div>
+        </div>
+        
+        <div class="footer">
+          <p>© 2024 CarIntel - Je betrouwbare auto-informatie platform</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await transporter.sendMail({
+    from: FROM_EMAIL,
+    to: email,
+    subject: 'Wachtwoord resetten - CarIntel',
+    html: htmlContent
+  });
+}
+
+// Handle email verification
+async function handleVerifyEmail(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { token } = req.body;
+
+  if (!token) {
+    return res.status(400).json({ error: 'Token is verplicht' });
+  }
+
+  const client = await pool.connect();
+  
+  try {
+    // Find user by verification token
+    const result = await client.query(
+      'SELECT * FROM users WHERE email_verification_token = $1 AND email_verification_expires > NOW()',
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Ongeldige of verlopen verificatie link' });
+    }
+
+    const user = result.rows[0];
+
+    // Update user to verified and clear token
+    await client.query(
+      `UPDATE users 
+       SET email_verified = TRUE, 
+           email_verification_token = NULL, 
+           email_verification_expires = NULL,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
+      [user.id]
+    );
+
+    // Log activity
+    await logActivity(user.id, 'EMAIL_VERIFIED', { email: user.email }, req);
+
+    return res.status(200).json({ message: 'Email succesvol geverifieerd! Je kunt nu inloggen.' });
+  } finally {
+    client.release();
+  }
+}
+
+// Handle password reset request
+async function handleRequestPasswordReset(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: 'Email is verplicht' });
+  }
+
+  const client = await pool.connect();
+  
+  try {
+    // Find user by email
+    const result = await client.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email.toLowerCase()]
+    );
+
+    if (result.rows.length === 0) {
+      // Don't reveal if email exists or not for security
+      return res.status(200).json({ message: 'Als dit email adres bestaat, is er een wachtwoord reset link verstuurd.' });
+    }
+
+    const user = result.rows[0];
+
+    // Generate password reset token
+    const resetToken = generateToken();
+    const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    // Save reset token
+    await client.query(
+      `UPDATE users 
+       SET password_reset_token = $1, 
+           password_reset_expires = $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3`,
+      [resetToken, resetExpires, user.id]
+    );
+
+    // Send password reset email
+    try {
+      await sendPasswordReset(user.email, user.name || '', resetToken);
+    } catch (emailError) {
+      console.error('Failed to send password reset email:', emailError);
+      // Continue even if email fails
+    }
+
+    // Log activity
+    await logActivity(user.id, 'PASSWORD_RESET_REQUESTED', { email: user.email }, req);
+
+    return res.status(200).json({ message: 'Als dit email adres bestaat, is er een wachtwoord reset link verstuurd.' });
+  } finally {
+    client.release();
+  }
+}
+
+// Handle password reset
+async function handleResetPassword(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { token, newPassword } = req.body;
+
+  if (!token || !newPassword) {
+    return res.status(400).json({ error: 'Token en nieuw wachtwoord zijn verplicht' });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: 'Wachtwoord moet minimaal 6 karakters lang zijn' });
+  }
+
+  const client = await pool.connect();
+  
+  try {
+    // Find user by reset token
+    const result = await client.query(
+      'SELECT * FROM users WHERE password_reset_token = $1 AND password_reset_expires > NOW()',
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Ongeldige of verlopen wachtwoord reset link' });
+    }
+
+    const user = result.rows[0];
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+    // Update password and clear reset token
+    await client.query(
+      `UPDATE users 
+       SET password_hash = $1, 
+           password_reset_token = NULL, 
+           password_reset_expires = NULL,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2`,
+      [hashedPassword, user.id]
+    );
+
+    // Log activity
+    await logActivity(user.id, 'PASSWORD_RESET_COMPLETED', { email: user.email }, req);
+
+    return res.status(200).json({ message: 'Wachtwoord succesvol gewijzigd! Je kunt nu inloggen met je nieuwe wachtwoord.' });
+  } finally {
+    client.release();
+  }
+}
+
+// Handle resend email verification
+async function handleResendEmailVerification(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: 'Email is verplicht' });
+  }
+
+  const client = await pool.connect();
+  
+  try {
+    // Find user by email
+    const result = await client.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email.toLowerCase()]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Gebruiker niet gevonden' });
+    }
+
+    const user = result.rows[0];
+
+    if (user.email_verified) {
+      return res.status(400).json({ error: 'Email adres is al geverifieerd' });
+    }
+
+    // Generate new verification token
+    const emailToken = generateToken();
+    const emailExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    // Update verification token
+    await client.query(
+      `UPDATE users 
+       SET email_verification_token = $1, 
+           email_verification_expires = $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3`,
+      [emailToken, emailExpires, user.id]
+    );
+
+    // Send verification email
+    try {
+      await sendEmailVerification(user.email, user.name || '', emailToken);
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      return res.status(500).json({ error: 'Kon verificatie email niet versturen. Probeer het later opnieuw.' });
+    }
+
+    // Log activity
+    await logActivity(user.id, 'EMAIL_VERIFICATION_RESENT', { email: user.email }, req);
+
+    return res.status(200).json({ message: 'Nieuwe verificatie email verstuurd! Controleer je inbox.' });
+  } finally {
+    client.release();
+  }
+}

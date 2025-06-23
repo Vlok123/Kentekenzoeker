@@ -48,7 +48,7 @@ export default function DashboardPage() {
   };
 
   const handleDownload = (result: any) => {
-    // Same download logic as in MijnOpgeslagenPage
+    // Windows-compatible download logic
     const kentekens = result.kentekens;
     const rows: string[] = [];
     
@@ -57,10 +57,13 @@ export default function DashboardPage() {
       rows.push(row);
     }
     
-    const content = rows.join('\n');
+    // Use Windows line endings for better compatibility
+    const content = rows.join('\r\n');
     const filename = `${result.name.replace(/[^a-zA-Z0-9]/g, '_')}_kentekens.txt`;
     
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    // Add BOM for UTF-8 Windows compatibility
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + content], { type: 'text/plain;charset=utf-8' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
@@ -74,7 +77,7 @@ export default function DashboardPage() {
     addNotification({
       type: 'success',
       title: 'Download gestart',
-      message: `${kentekens.length} kentekens gedownload als ${filename}`
+      message: `${kentekens.length} kentekens gedownload als ${filename} (Windows-compatibel)`
     });
   };
 
