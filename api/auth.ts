@@ -108,6 +108,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return await handleResendEmailVerification(req, res);
       case 'contact':
         return await handleContact(req, res);
+      case 'test-email-config':
+        return await handleTestEmailConfig(req, res);
+      case 'promote-to-admin':
+        return await handlePromoteToAdmin(req, res);
 
       default:
         return res.status(400).json({ error: 'Invalid action' });
@@ -373,21 +377,32 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
 
       // Get popular searches (combining kentekens from both sources)
       const popularSearchesResult = await client.query(`
-        WITH all_searches AS (
-          SELECT UPPER(search_query) as kenteken FROM anonymous_searches 
-          WHERE search_type = 'KENTEKEN' AND search_query IS NOT NULL AND search_query != ''
+        WITH kenteken_searches AS (
+          SELECT UPPER(TRIM(search_query)) as kenteken 
+          FROM anonymous_searches 
+          WHERE search_type = 'KENTEKEN' 
+            AND search_query IS NOT NULL 
+            AND TRIM(search_query) != ''
+            AND LENGTH(TRIM(search_query)) >= 4
+            AND TRIM(search_query) ~ '^[A-Z0-9-]+$'
           UNION ALL
-          SELECT UPPER(details->>'searchQuery') as kenteken FROM activity_logs 
-          WHERE action = 'SEARCH' AND details->>'searchQuery' IS NOT NULL AND details->>'searchQuery' != ''
+          SELECT UPPER(TRIM(details->>'searchQuery')) as kenteken 
+          FROM activity_logs 
+          WHERE action = 'SEARCH' 
+            AND details->>'searchQuery' IS NOT NULL 
+            AND TRIM(details->>'searchQuery') != ''
+            AND LENGTH(TRIM(details->>'searchQuery')) >= 4
+            AND TRIM(details->>'searchQuery') ~ '^[A-Z0-9-]+$'
         )
         SELECT 
           kenteken,
           COUNT(*) as count
-        FROM all_searches
-        WHERE kenteken != '' AND kenteken ~ '^[A-Z0-9-]+$'
+        FROM kenteken_searches
+        WHERE kenteken IS NOT NULL AND kenteken != ''
         GROUP BY kenteken
+        HAVING COUNT(*) > 1
         ORDER BY count DESC
-        LIMIT 15
+        LIMIT 10
       `);
       const popularSearches = popularSearchesResult.rows;
 
@@ -450,9 +465,9 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
           u.email,
           u.name,
           u.created_at,
-          COUNT(CASE WHEN al.action = 'SEARCH' THEN 1 END) as search_count,
-          COUNT(CASE WHEN al.action = 'LOGIN' THEN 1 END) as login_count,
-          COUNT(al.id) as total_activities,
+          COUNT(CASE WHEN al.action = 'SEARCH' THEN 1 END)::integer as search_count,
+          COUNT(CASE WHEN al.action = 'LOGIN' THEN 1 END)::integer as login_count,
+          COUNT(al.id)::integer as total_activities,
           MAX(al.created_at) as last_activity
         FROM users u
         LEFT JOIN activity_logs al ON u.id = al.user_id
@@ -1044,13 +1059,22 @@ async function handleLogAnonymousSearch(req: VercelRequest, res: VercelResponse)
 
 // Email configuration
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'mail.privateemail.com',
+  host: process.env.SMTP_HOST || 'smtp.privateemail.com',
   port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false, // true for 465, false for other ports
+  secure: false, // false for STARTTLS
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
-  }
+  },
+  // STARTTLS configuratie voor Namecheap
+  requireTLS: true,
+  // Extra opties voor Namecheap Private Email
+  tls: {
+    rejectUnauthorized: false
+  },
+  // Extra debug opties voor Namecheap
+  debug: true,
+  logger: true
 });
 
 const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@carintel.nl';
@@ -1424,30 +1448,49 @@ async function handleContact(req: VercelRequest, res: VercelResponse) {
     // Debug email configuratie
     const fromEmail = process.env.FROM_EMAIL || 'noreply@carintel.nl';
     console.log('Contact form email debug:', {
+      hasSmtpHost: !!process.env.SMTP_HOST,
+      smtpHost: process.env.SMTP_HOST || 'mail.privateemail.com',
       hasSmtpUser: !!process.env.SMTP_USER,
       hasSmtpPass: !!process.env.SMTP_PASS,
       smtpUser: process.env.SMTP_USER ? process.env.SMTP_USER.substring(0, 5) + '...' : 'not set',
-      fromEmail: fromEmail
+      smtpPort: process.env.SMTP_PORT || '587',
+      fromEmail: fromEmail,
+      nodeEnv: process.env.NODE_ENV
     });
 
     // Gebruik dezelfde email configuratie als andere functies
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'mail.privateemail.com',
+      host: process.env.SMTP_HOST || 'smtp.privateemail.com',
       port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: false, // true for 465, false for other ports
+      secure: false, // false for STARTTLS
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
-      }
+      },
+      // STARTTLS configuratie voor Namecheap
+      requireTLS: true,
+      // Extra opties voor Namecheap Private Email
+      tls: {
+        rejectUnauthorized: false
+      },
+      // Extra debug opties voor Namecheap
+      debug: true,
+      logger: true
     });
 
     // Test de verbinding
     try {
+      console.log('🔄 Testing email server connection...');
       await transporter.verify();
       console.log('✅ Email server connection verified');
     } catch (verifyError) {
-      console.error('❌ Email server verification failed:', verifyError);
-      throw new Error('Email server niet beschikbaar');
+      console.error('❌ Email server verification failed:', {
+        message: verifyError.message,
+        code: verifyError.code,
+        command: verifyError.command,
+        response: verifyError.response
+      });
+      throw new Error('Email server niet beschikbaar: ' + verifyError.message);
     }
 
     // Email content
@@ -1535,20 +1578,19 @@ Dit bericht is verzonden via het contactformulier op de CarIntel website.
       </head>
       <body>
         <div class="container">
-          <div class="header">
-            <div class="success-icon">✅</div>
-            <h2>Bericht ontvangen!</h2>
-          </div>
+                     <div class="header">
+             <div class="success-icon">✅</div>
+             <h2>Email Test Geslaagd!</h2>
+           </div>
           <div class="content">
             <p>Beste ${name},</p>
             
             <p>Bedankt voor je bericht! We hebben je contactformulier succesvol ontvangen.</p>
             
-            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
-              <strong>📧 Je bericht details:</strong><br>
-              <strong>Onderwerp:</strong> ${subject}<br>
-              <strong>Verzonden op:</strong> ${new Date().toLocaleString('nl-NL')}
-            </div>
+                         <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+               <strong>📧 Email configuratie test:</strong><br>
+               <strong>Test uitgevoerd op:</strong> ${new Date().toLocaleString('nl-NL')}
+             </div>
             
             <p>Ons team bekijkt je bericht en we nemen binnen 24 uur contact met je op tijdens werkdagen.</p>
             
@@ -1626,5 +1668,218 @@ info@carintel.nl
       error: errorMessage,
       debug: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
+  }
+}
+
+// Handle test email configuration
+async function handleTestEmailConfig(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: 'Email is verplicht' });
+  }
+
+  try {
+    // Debug email configuratie
+    const fromEmail = process.env.FROM_EMAIL || 'noreply@carintel.nl';
+    console.log('Contact form email debug:', {
+      hasSmtpHost: !!process.env.SMTP_HOST,
+      smtpHost: process.env.SMTP_HOST || 'mail.privateemail.com',
+      hasSmtpUser: !!process.env.SMTP_USER,
+      hasSmtpPass: !!process.env.SMTP_PASS,
+      smtpUser: process.env.SMTP_USER ? process.env.SMTP_USER.substring(0, 5) + '...' : 'not set',
+      smtpPort: process.env.SMTP_PORT || '587',
+      fromEmail: fromEmail,
+      nodeEnv: process.env.NODE_ENV
+    });
+
+    // Gebruik dezelfde email configuratie als andere functies
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.privateemail.com',
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: false, // false for STARTTLS
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+      },
+      // STARTTLS configuratie voor Namecheap
+      requireTLS: true,
+      // Extra opties voor Namecheap Private Email
+      tls: {
+        rejectUnauthorized: false
+      },
+      // Extra debug opties voor Namecheap
+      debug: true,
+      logger: true
+    });
+
+    // Test de verbinding
+    try {
+      console.log('🔄 Testing email server connection...');
+      await transporter.verify();
+      console.log('✅ Email server connection verified');
+    } catch (verifyError) {
+      console.error('❌ Email server verification failed:', {
+        message: verifyError.message,
+        code: verifyError.code,
+        command: verifyError.command,
+        response: verifyError.response
+      });
+      throw new Error('Email server niet beschikbaar: ' + verifyError.message);
+    }
+
+    // Bevestigings email naar verzender
+    const confirmationHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #3b82f6, #1e40af); color: white; padding: 20px; border-radius: 10px 10px 0 0; text-align: center; }
+          .content { background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }
+          .success-icon { font-size: 48px; margin-bottom: 20px; }
+          .button { display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="success-icon">✅</div>
+            <h2>Email Test Geslaagd!</h2>
+          </div>
+          <div class="content">
+            <p>Beste gebruiker,</p>
+             
+            <p>De email configuratie test is succesvol uitgevoerd!</p>
+            
+            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+              <strong>📧 Email configuratie test:</strong><br>
+              <strong>Test uitgevoerd op:</strong> ${new Date().toLocaleString('nl-NL')}
+            </div>
+            
+            <p>De email configuratie werkt correct en is klaar voor gebruik.</p>
+            
+            <p>In de tussentijd kun je:</p>
+            <ul>
+              <li>🔍 Kentekens opzoeken op onze website</li>
+              <li>📊 Trekgewicht controleren</li>
+              <li>📱 Je favoriete voertuigen opslaan</li>
+            </ul>
+            
+            <div style="text-align: center;">
+              <a href="https://carintel.nl" class="button">Terug naar CarIntel</a>
+            </div>
+            
+            <div style="margin-top: 30px; padding: 15px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
+              <strong>💡 Nog vragen?</strong><br>
+              Aarzel niet om nogmaals contact op te nemen als je meer hulp nodig hebt.
+            </div>
+            
+            <p style="margin-top: 30px; color: #6b7280; font-size: 14px;">
+              Met vriendelijke groet,<br>
+              Het CarIntel Team<br>
+              📧 info@carintel.nl
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+         await transporter.sendMail({
+       from: `"CarIntel" <${process.env.SMTP_USER}>`,
+       to: email,
+       subject: 'Email Test - CarIntel',
+       html: confirmationHtml,
+       text: `
+ Beste gebruiker,
+ 
+  De email configuratie test is succesvol uitgevoerd!
+ 
+ Test details:
+ - Test uitgevoerd op: ${new Date().toLocaleString('nl-NL')}
+ - Email server: Namecheap Private Email
+ 
+ De email configuratie werkt correct en is klaar voor gebruik.
+ 
+ Met vriendelijke groet,
+ Het CarIntel Team
+ info@carintel.nl
+      `
+    });
+
+    return res.status(200).json({ success: true, message: 'Bericht succesvol verzonden' });
+
+  } catch (error) {
+    console.error('Contact form error details:', {
+      message: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      stack: error.stack
+    });
+    
+    // Geef meer specifieke error informatie
+    let errorMessage = 'Er ging iets mis bij het versturen van je bericht';
+    if (error.code === 'EAUTH') {
+      errorMessage = 'Email authenticatie mislukt. Controleer email instellingen.';
+    } else if (error.code === 'ECONNECTION') {
+      errorMessage = 'Kan geen verbinding maken met email server.';
+    } else if (error.message && error.message.includes('Invalid login')) {
+      errorMessage = 'Email login credentials zijn niet geldig.';
+    }
+    
+    return res.status(500).json({ 
+      error: errorMessage,
+      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+}
+
+// Handle promote to admin
+async function handlePromoteToAdmin(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { userId } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID is verplicht' });
+  }
+
+  const client = await pool.connect();
+  
+  try {
+    // Find user by ID
+    const userResult = await client.query(
+      'SELECT * FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Gebruiker niet gevonden' });
+    }
+
+    const user = userResult.rows[0];
+
+    // Update user role to admin
+    await client.query(
+      'UPDATE users SET role = $1 WHERE id = $2',
+      ['admin', userId]
+    );
+
+    // Log activity
+    await logActivity(userId, 'PROMOTED_TO_ADMIN', {}, req);
+
+    return res.status(200).json({ message: 'Gebruiker succesvol gepromoveerd tot admin' });
+  } finally {
+    client.release();
   }
 }

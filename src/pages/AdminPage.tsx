@@ -369,14 +369,14 @@ export default function AdminPage() {
                   <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
                     <p className="text-sm text-slate-600 dark:text-slate-400">Gemiddeld per gebruiker</p>
                     <p className="font-semibold text-slate-900 dark:text-slate-100">
-                      {Math.round(stats.userActivity.reduce((sum, user) => sum + user.search_count, 0) / stats.userActivity.length)}
+                      {Math.round(stats.userActivity.reduce((sum, user) => sum + parseInt(user.search_count.toString()), 0) / stats.userActivity.length)}
                     </p>
                     <p className="text-sm text-slate-500">zoekopdrachten</p>
                   </div>
                   <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
                     <p className="text-sm text-slate-600 dark:text-slate-400">Actieve gebruikers</p>
                     <p className="font-semibold text-slate-900 dark:text-slate-100">
-                      {stats.userActivity.filter(user => user.search_count > 0).length}
+                      {stats.userActivity.filter(user => parseInt(user.search_count.toString()) > 0).length}
                     </p>
                     <p className="text-sm text-slate-500">van {stats.userActivity.length}</p>
                   </div>
@@ -411,9 +411,9 @@ export default function AdminPage() {
                             </td>
                             <td className="py-3 px-4 text-right">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                userActivity.search_count > 10 
+                                parseInt(userActivity.search_count.toString()) > 10 
                                   ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                                  : userActivity.search_count > 0
+                                  : parseInt(userActivity.search_count.toString()) > 0
                                   ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
                                   : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
                               }`}>
