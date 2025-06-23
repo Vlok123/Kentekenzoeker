@@ -16,6 +16,7 @@ import SetupPage from '@/pages/SetupPage';
 import VerifyEmailPage from '@/pages/VerifyEmailPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 import ResetPasswordPage from '@/pages/ResetPasswordPage';
+import ContactPage from '@/pages/ContactPage';
 
 
 // Layout wrapper that uses Outlet
@@ -76,6 +77,7 @@ function App() {
           <Route index element={<HomePage />} />
           <Route path="zoek" element={<ZoekPage />} />
           <Route path="trekgewicht" element={<TrekgewichtPage />} />
+          <Route path="contact" element={<ContactPage />} />
           <Route path="voertuig/:kenteken" element={<VoertuigDetailPage />} />
           
           {/* Protected routes */}

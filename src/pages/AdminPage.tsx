@@ -6,7 +6,6 @@ import {
   Search, 
   LogOut, 
   Activity,
-  Clock,
   TrendingUp,
   Calendar,
   Database,

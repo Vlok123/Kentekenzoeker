@@ -17,8 +17,8 @@ export default function SetupPage() {
   const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (password !== 'Admin123') {
-      setError('Incorrect setup password. Use Admin123');
+    if (password !== 'admin123!') {
+      setError('Incorrect setup password. Use admin123!');
       return;
     }
 
@@ -26,37 +26,21 @@ export default function SetupPage() {
     setError('');
 
     try {
-      // First try to register
+      // Try to login directly (admin user should already exist from database setup)
       try {
-        const response = await ApiAuthService.register({
-          email,
-          password,
-          name: 'Sander Helmink'
-        });
-        
+        const response = await ApiAuthService.login({ email, password });
         setUser(response.user);
         setToken(response.token);
         setSuccess(true);
         
-        // Note: User will have 'user' role, needs to be changed to 'admin' in database
         setTimeout(() => {
           navigate('/admin');
         }, 2000);
         
-      } catch (registerError: any) {
-        // If user already exists, try to login
-        if (registerError.message.includes('bestaat al')) {
-          const response = await ApiAuthService.login({ email, password });
-          setUser(response.user);
-          setToken(response.token);
-          setSuccess(true);
-          
-          setTimeout(() => {
-            navigate('/admin');
-          }, 2000);
-        } else {
-          throw registerError;
-        }
+      } catch (loginError: any) {
+        // If login fails, the admin user doesn't exist or wrong password
+        setError('Login failed. Make sure the admin user exists in the database with password admin123!');
+        throw loginError;
       }
     } catch (err: any) {
       setError(err.message || 'Setup failed');
@@ -75,10 +59,10 @@ export default function SetupPage() {
             </div>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-            Account Created!
+            Login Successful!
           </h1>
           <p className="text-slate-600 dark:text-slate-400 mb-4">
-            Note: You need to manually update the role to 'admin' in the database.
+            Welcome to the admin dashboard.
           </p>
           <p className="text-sm text-slate-500">Redirecting to admin page...</p>
         </div>
@@ -125,7 +109,7 @@ export default function SetupPage() {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Password (use: Admin123)
+                Password (use: admin123!)
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -134,7 +118,7 @@ export default function SetupPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  placeholder="Enter Admin123"
+                  placeholder="Enter admin123!"
                   className="input pl-10"
                 />
               </div>
@@ -149,9 +133,9 @@ export default function SetupPage() {
             </button>
           </form>
 
-          <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-            <p className="text-sm text-amber-800 dark:text-amber-200">
-              <strong>Note:</strong> After creating the account, you need to manually update the database to set role = 'admin' for this user.
+          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              <strong>Note:</strong> The admin user should already exist from database setup. Use password: admin123!
             </p>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, User, LogOut, Home, Search, Zap, BookOpen, Shield, Sun, Moon } from 'lucide-react';
+import { Menu, X, User, LogOut, Home, Search, Zap, BookOpen, Shield, Sun, Moon, Mail } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { useDarkMode } from '@/hooks/useDarkMode';
@@ -38,6 +38,7 @@ export default function Layout({ children }: LayoutProps) {
     { name: 'Home', href: '/', icon: Home, current: location.pathname === '/' },
     { name: 'Zoeken', href: '/zoek', icon: Search, current: location.pathname === '/zoek' },
     { name: 'Trekgewicht', href: '/trekgewicht', icon: Zap, current: location.pathname === '/trekgewicht' },
+    { name: 'Contact', href: '/contact', icon: Mail, current: location.pathname === '/contact' },
   ];
 
   const userNavigation = user ? [
