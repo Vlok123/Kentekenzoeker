@@ -35,7 +35,7 @@ export default function ContactPage() {
     setError(null);
 
     try {
-      const response = await fetch('/api/contact', {
+      const response = await fetch('/api/auth?action=contact', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -123,10 +123,10 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                      Veelgestelde Vragen
+                      Direct Contact
                     </h3>
                     <p className="text-slate-600 dark:text-slate-400">
-                      Bekijk eerst onze FAQ voor snelle antwoorden
+                      We helpen je graag met al je vragen
                     </p>
                   </div>
                 </div>
