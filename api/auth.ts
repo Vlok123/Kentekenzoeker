@@ -33,6 +33,9 @@ function debugEnvironment() {
 }
 const JWT_EXPIRES_IN = '7d';
 
+// Email configuration (will be used globally)
+// Removed duplicate - using config from functions below
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Enable CORS
   const origin = req.headers.origin;
@@ -1418,16 +1421,34 @@ async function handleContact(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Email transporter instellen
+    // Debug email configuratie
+    const fromEmail = process.env.FROM_EMAIL || 'noreply@carintel.nl';
+    console.log('Contact form email debug:', {
+      hasSmtpUser: !!process.env.SMTP_USER,
+      hasSmtpPass: !!process.env.SMTP_PASS,
+      smtpUser: process.env.SMTP_USER ? process.env.SMTP_USER.substring(0, 5) + '...' : 'not set',
+      fromEmail: fromEmail
+    });
+
+    // Gebruik dezelfde email configuratie als andere functies
     const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT || '587'),
       secure: false,
       auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
       }
     });
+
+    // Test de verbinding
+    try {
+      await transporter.verify();
+      console.log('✅ Email server connection verified');
+    } catch (verifyError) {
+      console.error('❌ Email server verification failed:', verifyError);
+      throw new Error('Email server niet beschikbaar');
+    }
 
     // Email content
     const htmlContent = `
@@ -1478,7 +1499,7 @@ async function handleContact(req: VercelRequest, res: VercelResponse) {
 
     // Email naar CarIntel sturen
     await transporter.sendMail({
-      from: `"CarIntel Contact" <${process.env.EMAIL_USER}>`,
+      from: `"CarIntel Contact" <${process.env.SMTP_USER}>`,
       to: 'info@carintel.nl',
       replyTo: email,
       subject: `[CarIntel Contact] ${subject}`,
@@ -1559,7 +1580,7 @@ Dit bericht is verzonden via het contactformulier op de CarIntel website.
     `;
 
     await transporter.sendMail({
-      from: `"CarIntel" <${process.env.EMAIL_USER}>`,
+      from: `"CarIntel" <${process.env.SMTP_USER}>`,
       to: email,
       subject: 'Bedankt voor je bericht - CarIntel',
       html: confirmationHtml,
@@ -1583,7 +1604,27 @@ info@carintel.nl
     return res.status(200).json({ success: true, message: 'Bericht succesvol verzonden' });
 
   } catch (error) {
-    console.error('Contact form error:', error);
-    return res.status(500).json({ error: 'Er ging iets mis bij het versturen van je bericht' });
+    console.error('Contact form error details:', {
+      message: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      stack: error.stack
+    });
+    
+    // Geef meer specifieke error informatie
+    let errorMessage = 'Er ging iets mis bij het versturen van je bericht';
+    if (error.code === 'EAUTH') {
+      errorMessage = 'Email authenticatie mislukt. Controleer email instellingen.';
+    } else if (error.code === 'ECONNECTION') {
+      errorMessage = 'Kan geen verbinding maken met email server.';
+    } else if (error.message && error.message.includes('Invalid login')) {
+      errorMessage = 'Email login credentials zijn niet geldig.';
+    }
+    
+    return res.status(500).json({ 
+      error: errorMessage,
+      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 }
