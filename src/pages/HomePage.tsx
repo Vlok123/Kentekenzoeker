@@ -90,7 +90,7 @@ export default function HomePage() {
               <div className="glass-card p-4 border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20">
                 <p className="text-sm text-amber-700 dark:text-amber-300 flex items-center justify-center gap-2">
                   <span className="text-lg">🚧</span>
-                  <span><strong>Beta versie</strong> - Dagelijks nieuwe functies en verbeteringen</span>
+                  <span><strong>Beta versie</strong> - Functies worden nog verder uitgewerkt. Mis je iets? Vul dan het contactformulier in.</span>
                 </p>
               </div>
             </div>
