@@ -65,6 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { action } = req.query;
 
   try {
+    console.log('🔍 Received action:', action);
     switch (action) {
       case 'login':
         return await handleLogin(req, res);
@@ -96,6 +97,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return await handleLogAnonymousSearch(req, res);
       case 'debug-env':
         return res.status(200).json(debugEnvironment());
+      case 'test-sketches':
+        console.log('🧪 Test sketches endpoint called');
+        return res.status(200).json({ message: 'Test sketches endpoint works!', action });
       case 'force-logout-all':
         return await handleForceLogoutAll(req, res);
       case 'verify-email':
@@ -112,6 +116,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return await handleTestEmailConfig(req, res);
       case 'promote-to-admin':
         return await handlePromoteToAdmin(req, res);
+      case 'save-sketch':
+        return await handleSaveSketch(req, res);
+      case 'get-sketches':
+        console.log('📂 Calling handleGetSketches');
+        return await handleGetSketches(req, res);
+      case 'get-sketch':
+        return await handleGetSketch(req, res);
+      case 'delete-sketch':
+        return await handleDeleteSketch(req, res);
+      case 'update-sketch':
+        return await handleUpdateSketch(req, res);
 
       default:
         return res.status(400).json({ error: 'Invalid action' });
@@ -1881,5 +1896,319 @@ async function handlePromoteToAdmin(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ message: 'Gebruiker succesvol gepromoveerd tot admin' });
   } finally {
     client.release();
+  }
+}
+
+// Save traffic sketch
+async function handleSaveSketch(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Geen autorisatie token' });
+  }
+
+  const token = authHeader.substring(7);
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const { title, description, location, incidents, drawnLines, metadata, isPublic } = req.body;
+
+    if (!title || !incidents) {
+      return res.status(400).json({ error: 'Titel en incidents zijn verplicht' });
+    }
+
+    const client = await pool.connect();
+    
+    try {
+      const result = await client.query(`
+        INSERT INTO verkeersschetsen (user_id, title, description, location, incidents, drawn_lines, metadata, is_public)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id, title, description, location, created_at
+      `, [
+        decoded.userId,
+        title,
+        description || null,
+        location || null,
+        JSON.stringify(incidents),
+        JSON.stringify(drawnLines || []),
+        JSON.stringify(metadata || {}),
+        isPublic || false
+      ]);
+
+      const sketch = result.rows[0];
+      
+      // Log the save activity
+      await logActivity(decoded.userId, 'SAVE_SKETCH', { 
+        sketchId: sketch.id,
+        title: title 
+      }, req);
+
+      return res.status(200).json({ 
+        message: 'Verkeersschets succesvol opgeslagen',
+        sketch
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error: any) {
+    console.error('Save sketch error:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Ongeldige token' });
+    }
+    return res.status(500).json({ error: 'Server error bij opslaan verkeersschets' });
+  }
+}
+
+// Get user's sketches
+async function handleGetSketches(req: VercelRequest, res: VercelResponse) {
+  console.log('📂 handleGetSketches called');
+  
+  if (req.method !== 'GET') {
+    console.log('❌ Wrong method:', req.method);
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers.authorization;
+  console.log('🔑 Auth header:', authHeader ? 'Present' : 'Missing');
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.log('❌ No valid auth header');
+    return res.status(401).json({ error: 'Geen autorisatie token' });
+  }
+
+  const token = authHeader.substring(7);
+  console.log('🎫 Token extracted');
+  
+  try {
+    console.log('🔐 Verifying token...');
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    console.log('✅ Token verified for user:', decoded.userId);
+
+    console.log('🔌 Connecting to database...');
+    const client = await pool.connect();
+    
+    try {
+      console.log('📊 Querying verkeersschetsen...');
+      
+      // First check if table exists
+      const tableCheck = await client.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_name = 'verkeersschetsen'
+        );
+      `);
+      
+      console.log('📋 Table exists:', tableCheck.rows[0].exists);
+      
+      if (!tableCheck.rows[0].exists) {
+        console.log('❌ Table does not exist, creating...');
+        await client.query(`
+          CREATE TABLE verkeersschetsen (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id UUID,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            location VARCHAR(255),
+            incidents JSONB NOT NULL DEFAULT '[]'::jsonb,
+            drawn_lines JSONB NOT NULL DEFAULT '[]'::jsonb,
+            metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+            is_public BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+        console.log('✅ Table created');
+      }
+
+      const result = await client.query(`
+        SELECT id, title, description, location, created_at, updated_at, is_public
+        FROM verkeersschetsen 
+        WHERE user_id = $1 
+        ORDER BY updated_at DESC
+      `, [decoded.userId]);
+
+      console.log('📊 Query result:', result.rows.length, 'sketches found');
+      return res.status(200).json({ sketches: result.rows });
+    } finally {
+      client.release();
+    }
+  } catch (error: any) {
+    console.error('❌ Get sketches error:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Ongeldige token' });
+    }
+    return res.status(500).json({ error: 'Server error bij ophalen verkeersschetsen', details: error.message });
+  }
+}
+
+// Get specific sketch
+async function handleGetSketch(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Geen autorisatie token' });
+  }
+
+  const token = authHeader.substring(7);
+  const sketchId = req.query.id as string;
+  
+  if (!sketchId) {
+    return res.status(400).json({ error: 'Sketch ID is verplicht' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+
+    const client = await pool.connect();
+    
+    try {
+      const result = await client.query(`
+        SELECT * FROM verkeersschetsen 
+        WHERE id = $1 AND (user_id = $2 OR is_public = TRUE)
+      `, [sketchId, decoded.userId]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Verkeersschets niet gevonden' });
+      }
+
+      return res.status(200).json({ sketch: result.rows[0] });
+    } finally {
+      client.release();
+    }
+  } catch (error: any) {
+    console.error('Get sketch error:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Ongeldige token' });
+    }
+    return res.status(500).json({ error: 'Server error bij ophalen verkeersschets' });
+  }
+}
+
+// Update sketch
+async function handleUpdateSketch(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'PUT') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Geen autorisatie token' });
+  }
+
+  const token = authHeader.substring(7);
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const { id, title, description, location, incidents, drawnLines, metadata, isPublic } = req.body;
+
+    if (!id || !title || !incidents) {
+      return res.status(400).json({ error: 'ID, titel en incidents zijn verplicht' });
+    }
+
+    const client = await pool.connect();
+    
+    try {
+      const result = await client.query(`
+        UPDATE verkeersschetsen 
+        SET title = $1, description = $2, location = $3, incidents = $4, 
+            drawn_lines = $5, metadata = $6, is_public = $7, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $8 AND user_id = $9
+        RETURNING id, title, description, location, updated_at
+      `, [
+        title,
+        description || null,
+        location || null,
+        JSON.stringify(incidents),
+        JSON.stringify(drawnLines || []),
+        JSON.stringify(metadata || {}),
+        isPublic || false,
+        id,
+        decoded.userId
+      ]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Verkeersschets niet gevonden of geen toegang' });
+      }
+
+      const sketch = result.rows[0];
+      
+      // Log the update activity
+      await logActivity(decoded.userId, 'UPDATE_SKETCH', { 
+        sketchId: id,
+        title: title 
+      }, req);
+
+      return res.status(200).json({ 
+        message: 'Verkeersschets succesvol bijgewerkt',
+        sketch
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error: any) {
+    console.error('Update sketch error:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Ongeldige token' });
+    }
+    return res.status(500).json({ error: 'Server error bij bijwerken verkeersschets' });
+  }
+}
+
+// Delete sketch
+async function handleDeleteSketch(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'DELETE') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Geen autorisatie token' });
+  }
+
+  const token = authHeader.substring(7);
+  const sketchId = req.query.id as string;
+  
+  if (!sketchId) {
+    return res.status(400).json({ error: 'Sketch ID is verplicht' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+
+    const client = await pool.connect();
+    
+    try {
+      const result = await client.query(`
+        DELETE FROM verkeersschetsen 
+        WHERE id = $1 AND user_id = $2
+        RETURNING title
+      `, [sketchId, decoded.userId]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Verkeersschets niet gevonden of geen toegang' });
+      }
+
+      // Log the delete activity
+      await logActivity(decoded.userId, 'DELETE_SKETCH', { 
+        sketchId: sketchId,
+        title: result.rows[0].title 
+      }, req);
+
+      return res.status(200).json({ message: 'Verkeersschets succesvol verwijderd' });
+    } finally {
+      client.release();
+    }
+  } catch (error: any) {
+    console.error('Delete sketch error:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Ongeldige token' });
+    }
+    return res.status(500).json({ error: 'Server error bij verwijderen verkeersschets' });
   }
 }

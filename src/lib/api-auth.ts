@@ -24,42 +24,70 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}) {
     throw new Error('Geen autorisatie token');
   }
 
-  const response = await fetch(`${API_BASE_URL}${url}`, {
-    ...options,
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
 
-  const data = await response.json();
+    // Check if response is HTML (indicates routing issue)
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error('Server configuration error - API endpoint not found. Please contact support.');
+    }
 
-  if (!response.ok) {
-    throw new Error(data.error || 'Request failed');
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Request failed');
+    }
+
+    return data;
+  } catch (error: any) {
+    // Handle JSON parsing errors specifically
+    if (error.message.includes('Unexpected token')) {
+      throw new Error('Server configuration error - received HTML instead of JSON. Please contact support.');
+    }
+    throw error;
   }
-
-  return data;
 }
 
 export class ApiAuthService {
   // Login user
   static async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await fetch(`${API_BASE_URL}/auth?action=login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth?action=login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+      });
 
-    const data = await response.json();
+      // Check if response is HTML (indicates routing issue)
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server configuration error - API endpoint not found. Please contact support.');
+      }
 
-    if (!response.ok) {
-      throw new Error(data.error || 'Login failed');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+
+      return data;
+    } catch (error: any) {
+      // Handle JSON parsing errors specifically
+      if (error.message.includes('Unexpected token')) {
+        throw new Error('Server configuration error - received HTML instead of JSON. Please contact support.');
+      }
+      throw error;
     }
-
-    return data;
   }
 
   // Register new user
@@ -420,5 +448,65 @@ export class ApiAuthService {
     }
 
     return data;
+  }
+
+  // Verkeersschetsen methods
+  static async getSketches(): Promise<{ sketches: any[] }> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/auth?action=get-sketches`);
+    return response;
+  }
+
+  static async getSketch(id: string): Promise<{ sketch: any }> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/auth?action=get-sketch&id=${id}`);
+    return response;
+  }
+
+  static async saveSketch(sketchData: {
+    title: string;
+    description?: string;
+    location?: string;
+    incidents: any[];
+    drawnLines: any[];
+    metadata: any;
+    isPublic?: boolean;
+  }): Promise<{ message: string; sketch: any }> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/auth?action=save-sketch`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(sketchData),
+    });
+    return response;
+  }
+
+  static async updateSketch(id: string, sketchData: {
+    title: string;
+    description?: string;
+    location?: string;
+    incidents: any[];
+    drawnLines: any[];
+    metadata: any;
+    isPublic?: boolean;
+  }): Promise<{ message: string; sketch: any }> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/auth?action=update-sketch`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id, ...sketchData }),
+    });
+    return response;
+  }
+
+  static async deleteSketch(id: string): Promise<{ message: string }> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/auth?action=delete-sketch`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id }),
+    });
+    return response;
   }
 } 

@@ -38,6 +38,7 @@ export default function Layout({ children }: LayoutProps) {
     { name: 'Home', href: '/', icon: Home, current: location.pathname === '/' },
     { name: 'Zoeken', href: '/zoek', icon: Search, current: location.pathname === '/zoek' },
     { name: 'Trekgewicht', href: '/trekgewicht', icon: Zap, current: location.pathname === '/trekgewicht' },
+    { name: 'Verkeersschets', href: '/verkeerssituatie', icon: Zap, current: location.pathname === '/verkeerssituatie' },
     { name: 'Contact', href: '/contact', icon: Mail, current: location.pathname === '/contact' },
   ];
 

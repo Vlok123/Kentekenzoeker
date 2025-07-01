@@ -12,15 +12,6 @@ export default defineConfig({
   },
   server: {
     port: 3001,
-    proxy: {
-      '/api': {
-        target: 'https://www.carintel.nl',
-        changeOrigin: true,
-        secure: true,
-        headers: {
-          'Origin': 'https://www.carintel.nl'
-        }
-      }
-    }
+    // Removed proxy for local development - API files in api/ directory will be served locally
   },
 }) 

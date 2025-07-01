@@ -1,0 +1,60 @@
+{
+  "created": "2025-07-01T12:33:04.564Z",
+  "location": "Nederland",
+  "incidents": [
+    {
+      "type": "persoon",
+      "position": [
+        51.83002603054893,
+        5.834335684776306
+      ],
+      "id": "persoon-1751373134826-0.9370421859276591",
+      "timestamp": "2025-07-01T12:32:14.827Z",
+      "rotation": 0,
+      "scale": 1,
+      "flipped": false
+    },
+    {
+      "type": "auto",
+      "position": [
+        51.82995806907276,
+        5.834459066390992
+      ],
+      "id": "auto-1751373137812-0.7731299736046188",
+      "timestamp": "2025-07-01T12:32:17.812Z",
+      "rotation": 0,
+      "scale": 1,
+      "flipped": true
+    }
+  ],
+  "metadata": {
+    "total_incidents": 2,
+    "incident_types": {
+      "auto": 1,
+      "fiets": 0,
+      "motor": 0,
+      "vrachtwagen": 0,
+      "bus": 0,
+      "ambulance": 0,
+      "politie": 0,
+      "brandweer": 0,
+      "persoon": 1,
+      "verkeersbord": 0,
+      "stoplicht": 0,
+      "afzetting": 0,
+      "wegafsluiting": 0,
+      "omleiding": 0,
+      "file": 0,
+      "ongeval": 0,
+      "werkzaamheden": 0,
+      "pijl-noord": 0,
+      "pijl-noordoost": 0,
+      "pijl-oost": 0,
+      "pijl-zuidoost": 0,
+      "pijl-zuid": 0,
+      "pijl-zuidwest": 0,
+      "pijl-west": 0,
+      "pijl-noordwest": 0
+    }
+  }
+}

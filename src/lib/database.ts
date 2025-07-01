@@ -62,6 +62,27 @@ export async function initializeDatabase() {
       );
     `);
 
+    // Verkeersschetsen table for saving traffic sketches
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS verkeersschetsen (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        location VARCHAR(255),
+        incidents JSONB NOT NULL DEFAULT '[]'::jsonb,
+        drawn_lines JSONB NOT NULL DEFAULT '[]'::jsonb,
+        metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+        is_public BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_verkeersschetsen_user_id ON verkeersschetsen(user_id);
+      CREATE INDEX IF NOT EXISTS idx_verkeersschetsen_created_at ON verkeersschetsen(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_verkeersschetsen_is_public ON verkeersschetsen(is_public);
+    `);
+
     // Activity logs table for tracking user actions
     await client.query(`
       CREATE TABLE IF NOT EXISTS activity_logs (
@@ -108,6 +129,9 @@ export async function initializeDatabase() {
         
         DELETE FROM saved_searches 
         WHERE created_at < NOW() - INTERVAL '30 days';
+        
+        DELETE FROM verkeersschetsen 
+        WHERE created_at < NOW() - INTERVAL '90 days' AND is_public = FALSE;
       END;
       $$ LANGUAGE plpgsql;
     `);
