@@ -1,4 +1,6 @@
-# CarIntel - Nederlandse Voertuig Informatie App
+# RDW Kentekenzoeker
+
+<!-- Deployment test - 2025-01-07 -->
 
 Een moderne, responsive Nederlandse web-app die gebruik maakt van de open data API's van de RDW om voertuiginformatie te tonen en bewerken. Beschikbaar op www.carintel.nl
 
