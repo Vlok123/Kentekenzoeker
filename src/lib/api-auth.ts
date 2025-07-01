@@ -452,13 +452,11 @@ export class ApiAuthService {
 
   // Verkeersschetsen methods
   static async getSketches(): Promise<{ sketches: any[] }> {
-    const response = await fetchWithAuth(`${API_BASE_URL}/auth?action=get-sketches`);
-    return response;
+    return await fetchWithAuth('/sketches?action=list');
   }
 
   static async getSketch(id: string): Promise<{ sketch: any }> {
-    const response = await fetchWithAuth(`${API_BASE_URL}/auth?action=get-sketch&id=${id}`);
-    return response;
+    return await fetchWithAuth(`/sketches?action=get&id=${id}`);
   }
 
   static async saveSketch(sketchData: {
@@ -470,14 +468,10 @@ export class ApiAuthService {
     metadata: any;
     isPublic?: boolean;
   }): Promise<{ message: string; sketch: any }> {
-    const response = await fetchWithAuth(`${API_BASE_URL}/auth?action=save-sketch`, {
+    return await fetchWithAuth('/sketches?action=save', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify(sketchData),
     });
-    return response;
   }
 
   static async updateSketch(id: string, sketchData: {
@@ -489,24 +483,15 @@ export class ApiAuthService {
     metadata: any;
     isPublic?: boolean;
   }): Promise<{ message: string; sketch: any }> {
-    const response = await fetchWithAuth(`${API_BASE_URL}/auth?action=update-sketch`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ id, ...sketchData }),
+    return await fetchWithAuth(`/sketches?action=update&id=${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(sketchData),
     });
-    return response;
   }
 
   static async deleteSketch(id: string): Promise<{ message: string }> {
-    const response = await fetchWithAuth(`${API_BASE_URL}/auth?action=delete-sketch`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ id }),
+    return await fetchWithAuth(`/sketches?action=delete&id=${id}`, {
+      method: 'DELETE',
     });
-    return response;
   }
 } 
