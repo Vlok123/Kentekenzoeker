@@ -443,7 +443,12 @@ const AdvancedIncidentMap: React.FC = () => {
       setSavedSketches(result.sketches)
     } catch (error: any) {
       console.error('Load sketches error:', error)
-      alert(`Fout bij laden schetsen: ${error.message}`)
+      // Only show alert if it's not an authentication error
+      if (!error.message?.includes('token') && !error.message?.includes('autorisatie')) {
+        alert(`Fout bij laden schetsen: ${error.message}`)
+      }
+      // Clear saved sketches on error
+      setSavedSketches([])
     }
   }
 
@@ -512,10 +517,10 @@ const AdvancedIncidentMap: React.FC = () => {
 
   // Load sketches on component mount
   React.useEffect(() => {
-    if (user) {
+    if (user && token) {
       loadSavedSketches()
     }
-  }, [user])
+  }, [user, token])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-slate-50">
