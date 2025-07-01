@@ -333,21 +333,25 @@ const AdvancedIncidentMap: React.FC = () => {
   const getLayerUrl = () => {
     switch (currentLayer) {
       case 'satellite':
-        return 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'
+        // ESRI World Imagery - zoom tot niveau 23-24
+        return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
       case 'hybrid':
-        return 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
+        // Stamen Terrain high-resolution - zoom tot ~20
+        return 'https://stamen-tiles-{s}.a.ssl.fastly.net/terrain/{z}/{x}/{y}{r}.png'
       default:
-        return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+        // CartoDB Positron - hogere zoom dan OSM
+        return 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
     }
   }
 
   const getLayerAttribution = () => {
     switch (currentLayer) {
       case 'satellite':
+        return '&copy; <a href="https://www.esri.com/">Esri</a>, Maxar, Earthstar Geographics'
       case 'hybrid':
-        return '&copy; <a href="https://maps.google.com/">Google Maps</a>'
+        return '&copy; <a href="http://stamen.com">Stamen Design</a> &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
       default:
-        return '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        return '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
     }
   }
 
@@ -619,7 +623,10 @@ const AdvancedIncidentMap: React.FC = () => {
         <MapContainer
           center={mapCenter}
           zoom={15}
-          maxZoom={60}
+          maxZoom={24}
+          zoomSnap={0.25}
+          zoomDelta={0.25}
+          wheelPxPerZoomLevel={40}
           style={{ height: '100%', width: '100%' }}
           ref={mapRef}
         >
@@ -627,6 +634,16 @@ const AdvancedIncidentMap: React.FC = () => {
             url={getLayerUrl()}
             attribution={getLayerAttribution()}
           />
+          
+          {/* Extra high-resolution overlay for extreme zoom */}
+          {currentLayer === 'satellite' && (
+            <TileLayer
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+              attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
+              opacity={0.2}
+              maxZoom={24}
+            />
+          )}
           
           {/* Hybrid overlay for labels */}
           {currentLayer === 'hybrid' && (
