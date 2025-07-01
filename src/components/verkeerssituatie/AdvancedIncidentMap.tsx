@@ -272,7 +272,7 @@ const AdvancedIncidentMap: React.FC = () => {
   const [drawnLines, setDrawnLines] = useState<DrawnLine[]>([])
   const [selectedTool, setSelectedTool] = useState<IncidentType | null>(null)
   const [toolbarCategory, setToolbarCategory] = useState<ToolbarCategory>('snel')
-  const [currentLayer, setCurrentLayer] = useState<MapLayer>('street')
+  const [currentLayer, setCurrentLayer] = useState<MapLayer>('satellite')
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null)
   const [isDrawingMode, setIsDrawingMode] = useState(false)
   const [mapCenter, setMapCenter] = useState<[number, number]>([52.09, 5.12]) // Utrecht centrum
@@ -333,9 +333,9 @@ const AdvancedIncidentMap: React.FC = () => {
   const getLayerUrl = () => {
     switch (currentLayer) {
       case 'satellite':
-        return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        return 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'
       case 'hybrid':
-        return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        return 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
       default:
         return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
     }
@@ -345,7 +345,7 @@ const AdvancedIncidentMap: React.FC = () => {
     switch (currentLayer) {
       case 'satellite':
       case 'hybrid':
-        return '&copy; <a href="https://www.esri.com/">Esri</a>'
+        return '&copy; <a href="https://maps.google.com/">Google Maps</a>'
       default:
         return '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }
