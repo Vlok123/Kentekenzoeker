@@ -175,7 +175,7 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
 
   return (
     <div className="floating-toolbar">
-      <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg border border-gray-200 p-4 max-w-64 z-[1000]">
+      <div className="absolute top-24 right-4 bg-white rounded-lg shadow-lg border border-gray-200 p-4 max-w-64 z-[1000]">
         {/* Category Dropdown */}
         <div className="category-dropdown-container mb-3" ref={dropdownRef}>
           <button
