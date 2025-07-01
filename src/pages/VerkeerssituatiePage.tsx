@@ -1,4 +1,3 @@
-import React from 'react';
 import Layout from '../components/Layout';
 import SEOHead from '../components/SEOHead';
 import AdvancedIncidentMap from '../components/verkeerssituatie/AdvancedIncidentMap';
