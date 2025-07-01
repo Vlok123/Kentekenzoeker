@@ -621,7 +621,7 @@ const AdvancedIncidentMap: React.FC = () => {
         <MapContainer
           center={mapCenter}
           zoom={15}
-          maxZoom={25}
+          maxZoom={30}
           style={{ height: '100%', width: '100%' }}
           ref={mapRef}
         >
