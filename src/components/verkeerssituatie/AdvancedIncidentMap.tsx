@@ -333,25 +333,25 @@ const AdvancedIncidentMap: React.FC = () => {
   const getLayerUrl = () => {
     switch (currentLayer) {
       case 'satellite':
-        // ESRI World Imagery - zoom tot niveau 23-24
-        return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        // Google Satellite met multi-server support
+        return 'https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'
       case 'hybrid':
-        // Stamen Terrain high-resolution - zoom tot ~20
-        return 'https://stamen-tiles-{s}.a.ssl.fastly.net/terrain/{z}/{x}/{y}{r}.png'
+        // Google Hybrid (satellite + roads)
+        return 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
       default:
-        // CartoDB Positron - hogere zoom dan OSM
-        return 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+        // Google Roads
+        return 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
     }
   }
 
   const getLayerAttribution = () => {
     switch (currentLayer) {
       case 'satellite':
-        return '&copy; <a href="https://www.esri.com/">Esri</a>, Maxar, Earthstar Geographics'
+        return '&copy; <a href="https://maps.google.com/">Google Maps</a> Satellite'
       case 'hybrid':
-        return '&copy; <a href="http://stamen.com">Stamen Design</a> &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
+        return '&copy; <a href="https://maps.google.com/">Google Maps</a> Hybrid'
       default:
-        return '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
+        return '&copy; <a href="https://maps.google.com/">Google Maps</a>'
     }
   }
 
@@ -623,25 +623,28 @@ const AdvancedIncidentMap: React.FC = () => {
         <MapContainer
           center={mapCenter}
           zoom={15}
-          maxZoom={24}
-          zoomSnap={0.25}
-          zoomDelta={0.25}
-          wheelPxPerZoomLevel={40}
+          maxZoom={22}
+          zoomSnap={0.1}
+          zoomDelta={0.1}
+          wheelPxPerZoomLevel={20}
           style={{ height: '100%', width: '100%' }}
           ref={mapRef}
         >
           <TileLayer
             url={getLayerUrl()}
             attribution={getLayerAttribution()}
+            subdomains={['0', '1', '2', '3']}
+            maxZoom={22}
           />
           
-          {/* Extra high-resolution overlay for extreme zoom */}
+          {/* Extra overlay voor labels op satellite */}
           {currentLayer === 'satellite' && (
             <TileLayer
-              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
-              attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
-              opacity={0.2}
-              maxZoom={24}
+              url="https://mt{s}.google.com/vt/lyrs=h&x={x}&y={y}&z={z}"
+              subdomains={['0', '1', '2', '3']}
+              attribution='&copy; <a href="https://maps.google.com/">Google Maps</a> Labels'
+              opacity={0.8}
+              maxZoom={22}
             />
           )}
           
