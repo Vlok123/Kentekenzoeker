@@ -4,20 +4,6 @@
   "devCommand": "npm run dev",
   "installCommand": "npm ci",
   "framework": "vite",
-  "functions": {
-    "api/auth.ts": {
-      "runtime": "@vercel/node"
-    },
-    "api/cleanup.ts": {
-      "runtime": "@vercel/node"
-    },
-    "api/init-db.ts": {
-      "runtime": "@vercel/node"
-    },
-    "api/sketches.ts": {
-      "runtime": "@vercel/node"
-    }
-  },
   "rewrites": [
     {
       "source": "/((?!api/).*)",
