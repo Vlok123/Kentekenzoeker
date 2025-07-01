@@ -2,6 +2,7 @@
 
 <!-- Deployment test - 2025-01-07 -->
 <!-- Auto deployment test - 2025-01-07 20:45 -->
+<!-- Test after Vercel reconnect - 2025-01-07 20:49 -->
 
 Een moderne, responsive Nederlandse web-app die gebruik maakt van de open data API's van de RDW om voertuiginformatie te tonen en bewerken. Beschikbaar op www.carintel.nl
 
