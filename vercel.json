@@ -5,13 +5,16 @@
   "installCommand": "npm ci",
   "framework": "vite",
   "functions": {
-    "api/auth.js": {
+    "api/auth.ts": {
       "runtime": "nodejs18.x"
     },
-    "api/cleanup.js": {
+    "api/cleanup.ts": {
       "runtime": "nodejs18.x"
     },
-    "api/init-db.js": {
+    "api/init-db.ts": {
+      "runtime": "nodejs18.x"
+    },
+    "api/sketches.ts": {
       "runtime": "nodejs18.x"
     }
   },
