@@ -351,8 +351,6 @@ const AdvancedIncidentMap: React.FC = () => {
     }
   }
 
-
-
   const takeScreenshot = async () => {
     const mapElement = document.querySelector('.leaflet-container') as HTMLElement
     if (!mapElement) return
@@ -515,7 +513,7 @@ const AdvancedIncidentMap: React.FC = () => {
     setSelectedIncident(null)
   }
 
-  // Load sketches on component mount
+  // Load sketches on component mount - Force redeploy for zoom fix
   React.useEffect(() => {
     if (user && token) {
       loadSavedSketches()
