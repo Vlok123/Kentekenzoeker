@@ -211,8 +211,8 @@ const IconEditor = ({
           <label className="block text-sm font-medium mb-1 text-gray-700">Grootte: {Math.round(incident.scale * 100)}%</label>
           <input
             type="range"
-            min="0.5"
-            max="2"
+            min="0.3"
+            max="4"
             step="0.1"
             value={incident.scale}
             onChange={(e) => onUpdate({ scale: parseFloat(e.target.value) })}
@@ -518,6 +518,21 @@ const AdvancedIncidentMap: React.FC = () => {
     setSaveDescription('')
     setSelectedIncident(null)
   }
+
+  // Keyboard event handler for deleting selected incidents
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Backspace' || event.key === 'Delete') {
+        if (selectedIncident && (!event.target || (event.target as HTMLElement).tagName !== 'INPUT')) {
+          event.preventDefault()
+          handleDeleteIncident(selectedIncident.id)
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [selectedIncident, handleDeleteIncident])
 
   // Load sketches on component mount - Force redeploy for zoom fix
   React.useEffect(() => {
