@@ -165,15 +165,17 @@ const IconEditor = ({
   onUpdate, 
   onDelete, 
   onClose,
-  position = 'right' 
+  position = 'left' 
 }: {
   incident: Incident
   onUpdate: (updates: Partial<Incident>) => void
   onDelete: () => void
   onClose: () => void
-  position?: 'right' | 'bottom'
+  position?: 'left' | 'right' | 'bottom'
 }) => {
-  const positionClass = position === 'right' 
+  const positionClass = position === 'left' 
+    ? 'absolute top-32 left-4' 
+    : position === 'right'
     ? 'absolute top-4 right-4' 
     : 'absolute bottom-4 right-4'
 
@@ -717,7 +719,7 @@ const AdvancedIncidentMap: React.FC = () => {
             onUpdate={(updates) => handleUpdateIncident(selectedIncident.id, updates)}
             onDelete={() => handleDeleteIncident(selectedIncident.id)}
             onClose={() => setSelectedIncident(null)}
-            position={isDrawingMode ? 'bottom' : 'right'}
+            position="left"
           />
         )}
       </div>
