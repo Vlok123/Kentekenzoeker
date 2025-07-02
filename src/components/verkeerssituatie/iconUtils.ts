@@ -55,10 +55,13 @@ export const createSvgIcon = (
   rotation: number = 0, 
   scale: number = 1, 
   isSelected: boolean = false,
-  isFlipped: boolean = false
+  isFlipped: boolean = false,
+  showBorder: boolean = false
 ) => {
   const size = Math.round(28 * scale)
   const selectedBorder = isSelected ? 'border: 3px solid #3b82f6; border-radius: 50%;' : ''
+  const userBorder = showBorder ? 'border: 2px solid #000000; border-radius: 8px; background: rgba(255,255,255,0.9); padding: 2px;' : ''
+  const borderStyle = selectedBorder || userBorder
   const flipTransform = isFlipped ? 'scaleX(-1)' : ''
   const combinedTransform = `rotate(${rotation}deg) ${flipTransform}`
   
@@ -70,7 +73,7 @@ export const createSvgIcon = (
         display: flex; 
         align-items: center; 
         justify-content: center;
-        ${selectedBorder}
+        ${borderStyle}
         transform: ${combinedTransform};
         transform-origin: center;
       ">
@@ -88,17 +91,20 @@ export const createTextIcon = (
   text: string = 'TEXT', 
   rotation: number = 0, 
   scale: number = 1, 
-  isSelected: boolean = false
+  isSelected: boolean = false,
+  showBorder: boolean = false
 ) => {
   const fontSize = Math.round(14 * scale)
   const selectedBorder = isSelected ? 'border: 2px solid #3b82f6;' : ''
+  const userBorder = showBorder ? 'border: 3px solid #000000; box-shadow: 0 0 0 1px white;' : 'border: 1px solid #333;'
+  const borderStyle = selectedBorder || userBorder
   
   return L.divIcon({
     html: `
       <div style="
         background: white;
         padding: 4px 8px;
-        border: 1px solid #333;
+        ${borderStyle}
         border-radius: 4px;
         font-size: ${fontSize}px;
         font-weight: bold;
@@ -106,7 +112,6 @@ export const createTextIcon = (
         white-space: nowrap;
         transform: rotate(${rotation}deg);
         transform-origin: center;
-        ${selectedBorder}
       ">
         ${text}
       </div>
@@ -120,13 +125,13 @@ export const createTextIcon = (
 // Create icon for incident based on type
 export const createIconForIncident = (incident: Incident, isSelected: boolean = false) => {
   if (incident.type === 'tekstblok') {
-    return createTextIcon(incident.text, incident.rotation, incident.scale, isSelected)
+    return createTextIcon(incident.text, incident.rotation, incident.scale, isSelected, incident.showBorder)
   }
 
   // Check if we have an SVG icon for this type
   if (iconMap[incident.type]) {
     const svgContent = `<img src="${iconMap[incident.type]}" style="width: 100%; height: 100%; object-fit: contain;" alt="${incident.type}" />`
-    return createSvgIcon(svgContent, incident.rotation, incident.scale, isSelected, incident.flipped)
+    return createSvgIcon(svgContent, incident.rotation, incident.scale, isSelected, incident.flipped, incident.showBorder)
   }
 
   // Fallback to emoji icons
@@ -149,6 +154,7 @@ export const createIconForIncident = (incident: Incident, isSelected: boolean = 
     incident.rotation,
     incident.scale,
     isSelected,
-    incident.flipped
+    incident.flipped,
+    incident.showBorder
   )
 } 

@@ -25,6 +25,7 @@ export interface Incident {
   scale: number
   flipped: boolean
   text?: string
+  showBorder?: boolean
 }
 
 export interface DrawnLine {

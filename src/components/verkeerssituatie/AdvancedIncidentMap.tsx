@@ -133,7 +133,8 @@ const MapEventHandler = ({
           rotation: 0,
           scale: 1,
           flipped: false,
-          text: selectedTool === 'tekstblok' ? 'TEKST' : undefined
+          text: selectedTool === 'tekstblok' ? 'TEKST' : undefined,
+          showBorder: false
         }
         onAddIncident(newIncident)
       } else {
@@ -232,6 +233,21 @@ const IconEditor = ({
             }`}
           >
             {incident.flipped ? 'Aan' : 'Uit'}
+          </button>
+        </div>
+
+        {/* Show Border */}
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium text-gray-700">Kader weergeven</label>
+          <button
+            onClick={() => onUpdate({ showBorder: !incident.showBorder })}
+            className={`px-3 py-1 rounded text-sm transition-colors ${
+              incident.showBorder
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            {incident.showBorder ? 'Aan' : 'Uit'}
           </button>
         </div>
 
