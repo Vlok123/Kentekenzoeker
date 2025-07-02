@@ -102,6 +102,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(200).json({ message: 'Test sketches endpoint works!', action });
       case 'test-db-connection':
         return await handleTestDbConnection(req, res);
+      case 'setup-admin':
+        return await handleSetupAdmin(req, res);
       case 'force-logout-all':
         return await handleForceLogoutAll(req, res);
       case 'verify-email':
@@ -2266,6 +2268,57 @@ async function handleTestDbConnection(req: VercelRequest, res: VercelResponse) {
     console.error('Database connection error:', error);
     return res.status(500).json({ 
       error: 'Failed to connect to database',
+      details: error.message 
+    });
+  }
+}
+
+async function handleSetupAdmin(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const client = await pool.connect();
+    try {
+      // Check if sanderhelmink@gmail.com exists
+      const userResult = await client.query(
+        'SELECT id, email, name, role FROM users WHERE email = $1',
+        ['sanderhelmink@gmail.com']
+      );
+
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'User sanderhelmink@gmail.com not found. Please register first.' 
+        });
+      }
+
+      const user = userResult.rows[0];
+      
+      // Update user role to admin
+      await client.query(
+        'UPDATE users SET role = $1, updated_at = CURRENT_TIMESTAMP WHERE email = $2',
+        ['admin', 'sanderhelmink@gmail.com']
+      );
+
+      // Verify the update
+      const updatedResult = await client.query(
+        'SELECT id, email, name, role, updated_at FROM users WHERE email = $1',
+        ['sanderhelmink@gmail.com']
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: 'Admin role successfully assigned',
+        user: updatedResult.rows[0]
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error: any) {
+    console.error('Setup admin error:', error);
+    return res.status(500).json({ 
+      error: 'Failed to setup admin user',
       details: error.message 
     });
   }
