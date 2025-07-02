@@ -151,7 +151,7 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       return <img 
         src={iconMap[tool]} 
         alt={tool}
-        className="w-7 h-7 object-contain"
+        className="w-5 h-5 sm:w-6 sm:h-6 object-contain"
       />
     }
     
@@ -170,12 +170,12 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       'pijl-tweekanten': '↔️', 'pijl-basis': '➡️', 'tekstblok': 'T'
     }
 
-    return <span className="text-lg">{fallbacks[tool] || '❓'}</span>
+    return <span className="text-base sm:text-lg">{fallbacks[tool] || '❓'}</span>
   }
 
   return (
     <div className="floating-toolbar">
-      <div className="absolute top-24 right-4 bg-white rounded-lg shadow-lg border border-gray-200 p-4 max-w-64 z-[1000]">
+      <div className="absolute top-24 right-4 bg-white rounded-lg shadow-lg border border-gray-200 p-4 w-72 max-w-[calc(100vw-2rem)] z-[1000]">
         {/* Category Dropdown */}
         <div className="category-dropdown-container mb-3" ref={dropdownRef}>
           <button
@@ -190,7 +190,7 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           </button>
           
           {dropdownOpen && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-[1100] max-h-60 overflow-y-auto">
               {Object.entries(categories).map(([key, category]) => (
                 <button
                   key={key}
@@ -248,21 +248,21 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {categories[currentCategory].tools.map((tool) => (
               <button
                 key={tool}
                 onClick={() => onSelectTool(selectedTool === tool ? null : tool)}
-                className={`p-3 rounded-lg border-2 transition-all flex flex-col items-center gap-1 min-h-20 ${
+                className={`p-2 rounded-lg border-2 transition-all flex flex-col items-center gap-1 min-h-16 ${
                   selectedTool === tool
                     ? 'border-blue-500 bg-blue-50 text-blue-700'
                     : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 text-gray-700'
                 }`}
               >
-                <div className="flex items-center justify-center h-7">
+                <div className="flex items-center justify-center h-6">
                   {renderToolIcon(tool)}
                 </div>
-                <span className="text-xs font-medium text-center leading-tight">
+                <span className="text-[10px] sm:text-xs font-medium text-center leading-tight">
                   {getToolDisplayName(tool)}
                 </span>
               </button>

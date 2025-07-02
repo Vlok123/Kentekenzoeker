@@ -663,8 +663,16 @@ const AdvancedIncidentMap: React.FC = () => {
               key={incident.id}
               position={incident.position}
               icon={createIconForIncident(incident, selectedIncident?.id === incident.id)}
+              draggable={true}
               eventHandlers={{
-                click: () => handleIncidentClick(incident)
+                click: () => handleIncidentClick(incident),
+                dragend: (e) => {
+                  const marker = e.target;
+                  const position = marker.getLatLng();
+                  handleUpdateIncident(incident.id, { 
+                    position: [position.lat, position.lng] 
+                  });
+                }
               }}
             />
           ))}
