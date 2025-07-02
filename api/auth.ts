@@ -104,6 +104,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return await handleTestDbConnection(req, res);
       case 'setup-admin':
         return await handleSetupAdmin(req, res);
+      case 'check-user':
+        return await handleCheckUser(req, res);
       case 'force-logout-all':
         return await handleForceLogoutAll(req, res);
       case 'verify-email':
@@ -2321,5 +2323,50 @@ async function handleSetupAdmin(req: VercelRequest, res: VercelResponse) {
       error: 'Failed to setup admin user',
       details: error.message 
     });
+  }
+}
+
+async function handleCheckUser(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Geen autorisatie token' });
+  }
+
+  const token = authHeader.substring(7);
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    
+    const client = await pool.connect();
+    try {
+      const userResult = await client.query(
+        'SELECT * FROM users WHERE id = $1',
+        [decoded.userId]
+      );
+
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Gebruiker niet gevonden' });
+      }
+
+      const user = userResult.rows[0];
+      const userData = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        created_at: user.created_at,
+        updated_at: user.updated_at
+      };
+
+      return res.status(200).json({ user: userData });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    return res.status(401).json({ error: 'Ongeldig token' });
   }
 }
