@@ -271,7 +271,7 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
         )}
 
         {/* Instructions */}
-        <div className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-600">
+        <div className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-600 space-y-2">
           {selectedTool ? (
             <p className="italic">Klik op de kaart om een {getToolDisplayName(selectedTool).toLowerCase()} te plaatsen</p>
           ) : isDrawingMode ? (
@@ -279,6 +279,12 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           ) : (
             <p className="italic">Selecteer een tool om te beginnen</p>
           )}
+          
+          <div className="border-t border-gray-100 pt-2">
+            <p className="text-gray-500 leading-relaxed">
+              💡 <strong>Tip:</strong> Voor betere zichtbaarheid van iconen tegen een drukke kaartachtergrond kunt u bij het bewerken van een icoon de optie "Kader weergeven" inschakelen.
+            </p>
+          </div>
         </div>
       </div>
     </div>
