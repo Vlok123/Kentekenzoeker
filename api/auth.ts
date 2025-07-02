@@ -100,6 +100,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'test-sketches':
         console.log('🧪 Test sketches endpoint called');
         return res.status(200).json({ message: 'Test sketches endpoint works!', action });
+      case 'test-db-connection':
+        return await handleTestDbConnection(req, res);
       case 'force-logout-all':
         return await handleForceLogoutAll(req, res);
       case 'verify-email':
@@ -519,9 +521,20 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
     } finally {
       client.release();
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Admin stats error:', error);
-    return res.status(401).json({ error: 'Ongeldig token' });
+    
+    // Check if it's a JWT error
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Ongeldig token' });
+    }
+    
+    // Database or other errors
+    return res.status(500).json({ 
+      error: 'Kon statistieken niet laden', 
+      details: error.message,
+      type: error.name
+    });
   }
 }
 
@@ -2210,5 +2223,50 @@ async function handleDeleteSketch(req: VercelRequest, res: VercelResponse) {
       return res.status(401).json({ error: 'Ongeldige token' });
     }
     return res.status(500).json({ error: 'Server error bij verwijderen verkeersschets' });
+  }
+}
+
+async function handleTestDbConnection(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const client = await pool.connect();
+    try {
+      // Test basic connection
+      await client.query('SELECT 1 as test');
+      
+      // Check which tables exist
+      const tablesResult = await client.query(`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public'
+        ORDER BY table_name
+      `);
+      
+      // Check users table specifically
+      let usersInfo: { exists: boolean; count?: number } = { exists: false };
+      try {
+        const usersResult = await client.query('SELECT COUNT(*) as count FROM users');
+        usersInfo = { exists: true, count: parseInt(usersResult.rows[0].count) };
+      } catch {
+        usersInfo = { exists: false };
+      }
+      
+      return res.status(200).json({ 
+        message: 'Database connection successful',
+        tables: tablesResult.rows.map(r => r.table_name),
+        usersTable: usersInfo
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error: any) {
+    console.error('Database connection error:', error);
+    return res.status(500).json({ 
+      error: 'Failed to connect to database',
+      details: error.message 
+    });
   }
 }
