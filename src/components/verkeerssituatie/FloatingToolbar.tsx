@@ -190,7 +190,7 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           </button>
           
           {dropdownOpen && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-[1100] max-h-60 overflow-y-auto">
+            <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-gray-200 rounded-lg shadow-lg z-[1100] max-h-60 overflow-y-auto">
               {Object.entries(categories).map(([key, category]) => (
                 <button
                   key={key}
