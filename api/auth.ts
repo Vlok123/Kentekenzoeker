@@ -106,6 +106,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return await handleSetupAdmin(req, res);
       case 'check-user':
         return await handleCheckUser(req, res);
+      case 'debug-database':
+        return await handleDebugDatabase(req, res);
       case 'force-logout-all':
         return await handleForceLogoutAll(req, res);
       case 'verify-email':
@@ -2368,5 +2370,64 @@ async function handleCheckUser(req: VercelRequest, res: VercelResponse) {
     }
   } catch (error) {
     return res.status(401).json({ error: 'Ongeldig token' });
+  }
+}
+
+async function handleDebugDatabase(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const client = await pool.connect();
+    try {
+      // Get basic counts from all tables
+      const usersCount = await client.query('SELECT COUNT(*) as count FROM users');
+      const activityLogsCount = await client.query('SELECT COUNT(*) as count FROM activity_logs');
+      const anonymousSearchesCount = await client.query('SELECT COUNT(*) as count FROM anonymous_searches');
+      const savedVehiclesCount = await client.query('SELECT COUNT(*) as count FROM saved_vehicles');
+      const savedSearchesCount = await client.query('SELECT COUNT(*) as count FROM saved_searches');
+
+      // Get some sample data
+      const sampleUsers = await client.query('SELECT id, email, role, created_at FROM users LIMIT 5');
+      const sampleActivityLogs = await client.query('SELECT action, created_at FROM activity_logs LIMIT 5');
+      const sampleAnonymousSearches = await client.query('SELECT search_type, search_query, created_at FROM anonymous_searches LIMIT 5');
+
+      // Test the exact queries from admin-stats
+      const totalUsersResult = await client.query('SELECT COUNT(*) as count FROM users');
+      const activeUsersResult = await client.query(`
+        SELECT COUNT(DISTINCT user_id) as count 
+        FROM activity_logs 
+        WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+      `);
+
+      return res.status(200).json({
+        table_counts: {
+          users: parseInt(usersCount.rows[0].count),
+          activity_logs: parseInt(activityLogsCount.rows[0].count),
+          anonymous_searches: parseInt(anonymousSearchesCount.rows[0].count),
+          saved_vehicles: parseInt(savedVehiclesCount.rows[0].count),
+          saved_searches: parseInt(savedSearchesCount.rows[0].count)
+        },
+        sample_data: {
+          users: sampleUsers.rows,
+          activity_logs: sampleActivityLogs.rows,
+          anonymous_searches: sampleAnonymousSearches.rows
+        },
+        admin_query_results: {
+          total_users: parseInt(totalUsersResult.rows[0].count),
+          active_users: parseInt(activeUsersResult.rows[0].count)
+        }
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error: any) {
+    console.error('Database debug error:', error);
+    return res.status(500).json({ 
+      error: 'Failed to retrieve database information',
+      details: error.message,
+      stack: error.stack
+    });
   }
 }
