@@ -108,6 +108,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return await handleCheckUser(req, res);
       case 'debug-database':
         return await handleDebugDatabase(req, res);
+      case 'test-admin-stats':
+        return await handleTestAdminStats(req, res);
       case 'force-logout-all':
         return await handleForceLogoutAll(req, res);
       case 'verify-email':
@@ -2426,6 +2428,85 @@ async function handleDebugDatabase(req: VercelRequest, res: VercelResponse) {
     console.error('Database debug error:', error);
     return res.status(500).json({ 
       error: 'Failed to retrieve database information',
+      details: error.message,
+      stack: error.stack
+    });
+  }
+}
+
+async function handleTestAdminStats(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const client = await pool.connect();
+    try {
+      console.log('🔍 Running test admin stats...');
+
+      // Run the EXACT same queries as the real admin-stats endpoint
+      // Get total users
+      const usersResult = await client.query('SELECT COUNT(*) as count FROM users');
+      const totalUsers = parseInt(usersResult.rows[0].count);
+
+      // Get active users (last 7 days)
+      const activeUsersResult = await client.query(`
+        SELECT COUNT(DISTINCT user_id) as count 
+        FROM activity_logs 
+        WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+      `);
+      const activeUsers = parseInt(activeUsersResult.rows[0].count);
+
+      // Get total searches (both logged in and anonymous)
+      const totalSearchesResult = await client.query(`
+        SELECT 
+          (SELECT COUNT(*) FROM activity_logs WHERE action = 'SEARCH') + 
+          (SELECT COALESCE(COUNT(*), 0) FROM anonymous_searches) as count
+      `);
+      const totalSearches = parseInt(totalSearchesResult.rows[0].count);
+
+      // Get searches today
+      const searchesTodayResult = await client.query(`
+        SELECT 
+          (SELECT COUNT(*) FROM activity_logs WHERE action = 'SEARCH' AND DATE(created_at) = CURRENT_DATE) + 
+          (SELECT COALESCE(COUNT(*), 0) FROM anonymous_searches WHERE DATE(created_at) = CURRENT_DATE) as count
+      `);
+      const searchesToday = parseInt(searchesTodayResult.rows[0].count);
+
+      // Get popular searches
+      const popularSearchesResult = await client.query(`
+        SELECT search_query as kenteken, COUNT(*) as count
+        FROM anonymous_searches 
+        WHERE search_query IS NOT NULL 
+        GROUP BY search_query
+        ORDER BY count DESC
+        LIMIT 10
+      `);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Test admin stats completed',
+        results: {
+          totalUsers,
+          activeUsers,
+          totalSearches,
+          searchesToday,
+          popularSearches: popularSearchesResult.rows
+        },
+        debug: {
+          raw_users_count: usersResult.rows[0].count,
+          raw_active_users_count: activeUsersResult.rows[0].count,
+          raw_total_searches_count: totalSearchesResult.rows[0].count,
+          raw_searches_today_count: searchesTodayResult.rows[0].count
+        }
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error: any) {
+    console.error('Test admin stats error:', error);
+    return res.status(500).json({ 
+      error: 'Failed to run test admin stats',
       details: error.message,
       stack: error.stack
     });
