@@ -2285,15 +2285,15 @@ async function handleSetupAdmin(req: VercelRequest, res: VercelResponse) {
   try {
     const client = await pool.connect();
     try {
-      // Check if sanderhelmink@gmail.com exists
+      // Look for Sander's account (either gmail or hotmail)
       const userResult = await client.query(
-        'SELECT id, email, name, role FROM users WHERE email = $1',
-        ['sanderhelmink@gmail.com']
+        'SELECT id, email, name, role FROM users WHERE email IN ($1, $2)',
+        ['sanderhelmink@gmail.com', 'sanderhelmink@hotmail.com']
       );
 
       if (userResult.rows.length === 0) {
         return res.status(404).json({ 
-          error: 'User sanderhelmink@gmail.com not found. Please register first.' 
+          error: 'Sander\'s account not found. Please register first.' 
         });
       }
 
@@ -2302,13 +2302,13 @@ async function handleSetupAdmin(req: VercelRequest, res: VercelResponse) {
       // Update user role to admin
       await client.query(
         'UPDATE users SET role = $1, updated_at = CURRENT_TIMESTAMP WHERE email = $2',
-        ['admin', 'sanderhelmink@gmail.com']
+        ['admin', user.email]
       );
 
       // Verify the update
       const updatedResult = await client.query(
         'SELECT id, email, name, role, updated_at FROM users WHERE email = $1',
-        ['sanderhelmink@gmail.com']
+        [user.email]
       );
 
       return res.status(200).json({
