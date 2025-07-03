@@ -110,6 +110,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return await handleDebugDatabase(req, res);
       case 'test-admin-stats':
         return await handleTestAdminStats(req, res);
+      case 'debug-token':
+        return await handleDebugToken(req, res);
       case 'force-logout-all':
         return await handleForceLogoutAll(req, res);
       case 'verify-email':
@@ -533,15 +535,28 @@ async function handleAdminStats(req: VercelRequest, res: VercelResponse) {
     console.error('Admin stats error:', error);
     
     // Check if it's a JWT error
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Ongeldig token' });
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ 
+        error: 'Ongeldig token', 
+        debug: 'JWT token is malformed or invalid',
+        solution: 'Please log out and log back in'
+      });
+    }
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ 
+        error: 'Token verlopen', 
+        debug: `Token expired at: ${new Date(error.expiredAt).toISOString()}`,
+        solution: 'Please log out and log back in'
+      });
     }
     
     // Database or other errors
     return res.status(500).json({ 
       error: 'Kon statistieken niet laden', 
-      details: error.message,
-      type: error.name
+      debug: error.message,
+      type: error.name,
+      stack: error.stack
     });
   }
 }
@@ -2508,6 +2523,97 @@ async function handleTestAdminStats(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ 
       error: 'Failed to run test admin stats',
       details: error.message,
+      stack: error.stack
+    });
+  }
+}
+
+async function handleDebugToken(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader) {
+    return res.status(400).json({ 
+      error: 'No authorization header',
+      debug: 'Missing Authorization header entirely'
+    });
+  }
+
+  if (!authHeader.startsWith('Bearer ')) {
+    return res.status(400).json({ 
+      error: 'Invalid authorization format',
+      debug: `Expected "Bearer <token>", got: "${authHeader.substring(0, 20)}..."`
+    });
+  }
+
+  const token = authHeader.substring(7);
+
+  try {
+    console.log('🔍 Attempting to verify token...');
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    console.log('✅ Token verified successfully');
+    
+    const client = await pool.connect();
+    try {
+      const userResult = await client.query(
+        'SELECT id, email, role FROM users WHERE id = $1',
+        [decoded.userId]
+      );
+
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'User not found',
+          debug: `No user found with ID: ${decoded.userId}`
+        });
+      }
+
+      const user = userResult.rows[0];
+
+      return res.status(200).json({
+        success: true,
+        message: 'Token is valid',
+        token_info: {
+          user_id: decoded.userId,
+          user_email: decoded.email,
+          user_role: decoded.role,
+          token_expires: new Date(decoded.exp * 1000).toISOString()
+        },
+        database_user: {
+          id: user.id,
+          email: user.email,
+          role: user.role
+        },
+        is_admin: user.role === 'admin'
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error: any) {
+    console.error('❌ Token verification failed:', error);
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ 
+        error: 'Token expired',
+        debug: `Token expired at: ${new Date(error.expiredAt).toISOString()}`,
+        name: error.name
+      });
+    }
+    
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ 
+        error: 'Invalid token',
+        debug: error.message,
+        name: error.name
+      });
+    }
+
+    return res.status(500).json({ 
+      error: 'Token verification failed',
+      debug: error.message,
+      name: error.name,
       stack: error.stack
     });
   }
